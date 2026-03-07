@@ -26,6 +26,12 @@ export const loginService = async ({ email, password }) => {
     throw error;
   }
 
+  if (!user.isActive) {
+    const error = new Error("Account is deactivated");
+    error.statusCode = 403;
+    throw error;
+  }
+
   const isMatched = await user.comparePassword(password);
 
   if (!isMatched) {

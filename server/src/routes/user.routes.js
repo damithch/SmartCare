@@ -3,6 +3,7 @@ import {
   createUserAdmin,
   deleteUserAdmin,
   getMyProfile,
+  getUserAdminById,
   listUsers,
   updateUserAdmin
 } from "../controllers/user.controller.js";
@@ -13,6 +14,7 @@ const router = Router();
 
 router.get("/me", protect, getMyProfile);
 router.get("/", protect, authorize(ROLES.ADMIN, ROLES.SYSTEM_ADMIN), listUsers);
+router.get("/:id", protect, authorize(ROLES.ADMIN, ROLES.SYSTEM_ADMIN), getUserAdminById);
 router.post("/", protect, authorize(ROLES.ADMIN), createUserAdmin);
 router.patch("/:id", protect, authorize(ROLES.ADMIN), updateUserAdmin);
 router.delete("/:id", protect, authorize(ROLES.ADMIN), deleteUserAdmin);

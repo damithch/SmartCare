@@ -8,11 +8,20 @@ import {
 } from "../services/user.service.js";
 
 export const listUsers = asyncHandler(async (req, res) => {
-  const users = await getAllUsers();
+  const result = await getAllUsers({
+    page: req.query.page,
+    limit: req.query.limit,
+    search: req.query.search,
+    role: req.query.role,
+    isActive: req.query.isActive,
+    sortBy: req.query.sortBy,
+    sortOrder: req.query.sortOrder
+  });
 
   res.status(200).json({
     success: true,
-    data: users
+    data: result.users,
+    pagination: result.pagination
   });
 });
 
@@ -44,6 +53,23 @@ export const createUserAdmin = asyncHandler(async (req, res) => {
   });
 });
 
+export const getUserAdminById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const user = await getUserById(id);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found"
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: user
+  });
+});
+
 export const updateUserAdmin = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { fullName, email, password, role } = req.body;
@@ -71,10 +97,18 @@ export const updateUserAdmin = asyncHandler(async (req, res) => {
 
 export const deleteUserAdmin = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  await deleteUserByAdmin(id);
+  if (req.user._id.toString() === id) {
+    return res.status(400).json({
+      success: false,
+      message: "Admin cannot deactivate own account"
+    });
+  }
+
+  const user = await deleteUserByAdmin(id);
 
   res.status(200).json({
     success: true,
-    message: "User deleted successfully"
+    message: "User deactivated successfully",
+    data: user
   });
 });

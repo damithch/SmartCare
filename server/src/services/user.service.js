@@ -4,7 +4,55 @@ export const findUserByEmail = (email) => User.findOne({ email }).select("+passw
 
 export const createUser = (payload) => User.create(payload);
 
-export const getAllUsers = () => User.find().select("-password");
+export const getAllUsers = async ({
+  page = 1,
+  limit = 10,
+  search = "",
+  role,
+  isActive,
+  sortBy = "createdAt",
+  sortOrder = "desc"
+} = {}) => {
+  const safePage = Math.max(Number.parseInt(page, 10) || 1, 1);
+  const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 10, 1), 100);
+  const safeSortOrder = sortOrder === "asc" ? 1 : -1;
+  const allowedSortFields = ["createdAt", "updatedAt", "fullName", "email", "role"];
+  const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
+
+  const query = {};
+
+  if (search) {
+    query.$or = [
+      { fullName: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } }
+    ];
+  }
+
+  if (role) query.role = role;
+  if (isActive === "true") query.isActive = true;
+  if (isActive === "false") query.isActive = false;
+
+  const skip = (safePage - 1) * safeLimit;
+
+  const [users, total] = await Promise.all([
+    User.find(query)
+      .select("-password")
+      .sort({ [safeSortBy]: safeSortOrder })
+      .skip(skip)
+      .limit(safeLimit),
+    User.countDocuments(query)
+  ]);
+
+  return {
+    users,
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages: Math.ceil(total / safeLimit) || 1
+    }
+  };
+};
 
 export const getUserById = (id) => User.findById(id).select("-password");
 
@@ -57,5 +105,8 @@ export const deleteUserByAdmin = async (id) => {
     throw error;
   }
 
-  await user.deleteOne();
+  user.isActive = false;
+  await user.save();
+
+  return User.findById(user._id).select("-password");
 };

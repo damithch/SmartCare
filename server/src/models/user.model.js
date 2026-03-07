@@ -26,6 +26,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: Object.values(ROLES),
       default: ROLES.PATIENT
+    },
+    isActive: {
+      type: Boolean,
+      default: true
     }
   },
   { timestamps: true }
