@@ -1,5 +1,6 @@
 import User from "../models/user.model.js";
 import { ROLES } from "../constants/roles.js";
+import AppError from "../utils/appError.js";
 
 const SELF_PROFILE_FIELD_ALLOWLIST = {
   [ROLES.PATIENT]: ["fullName", "email", "password"],
@@ -68,40 +69,38 @@ export const updateMyProfile = async (userId, role, payload) => {
   const allowedFields = SELF_PROFILE_FIELD_ALLOWLIST[role];
 
   if (!allowedFields) {
-    const error = new Error("Your role is not allowed to update profile here");
-    error.statusCode = 403;
-    throw error;
+    throw new AppError(
+      "Your role is not allowed to update profile here",
+      403,
+      "FORBIDDEN_PROFILE_UPDATE"
+    );
   }
 
   const providedKeys = Object.keys(payload).filter((key) => payload[key] !== undefined);
   const disallowedKeys = providedKeys.filter((key) => !allowedFields.includes(key));
 
   if (disallowedKeys.length > 0) {
-    const error = new Error(`Not allowed fields: ${disallowedKeys.join(", ")}`);
-    error.statusCode = 403;
-    throw error;
+    throw new AppError(
+      `Not allowed fields: ${disallowedKeys.join(", ")}`,
+      403,
+      "FORBIDDEN_PROFILE_FIELDS"
+    );
   }
 
   if (providedKeys.length === 0) {
-    const error = new Error("Provide at least one field to update");
-    error.statusCode = 400;
-    throw error;
+    throw new AppError("Provide at least one field to update", 400, "VALIDATION_ERROR");
   }
 
   const user = await User.findById(userId).select("+password");
 
   if (!user) {
-    const error = new Error("User not found");
-    error.statusCode = 404;
-    throw error;
+    throw new AppError("User not found", 404, "USER_NOT_FOUND");
   }
 
   if (payload.email && payload.email !== user.email) {
     const duplicateEmail = await User.findOne({ email: payload.email });
     if (duplicateEmail) {
-      const error = new Error("Email is already registered");
-      error.statusCode = 409;
-      throw error;
+      throw new AppError("Email is already registered", 409, "DUPLICATE_EMAIL");
     }
   }
 
@@ -117,9 +116,7 @@ export const createUserByAdmin = async ({ fullName, email, password, role }) => 
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
-    const error = new Error("Email is already registered");
-    error.statusCode = 409;
-    throw error;
+    throw new AppError("Email is already registered", 409, "DUPLICATE_EMAIL");
   }
 
   const user = await User.create({ fullName, email, password, role });
@@ -130,17 +127,13 @@ export const updateUserByAdmin = async (id, payload) => {
   const user = await User.findById(id).select("+password");
 
   if (!user) {
-    const error = new Error("User not found");
-    error.statusCode = 404;
-    throw error;
+    throw new AppError("User not found", 404, "USER_NOT_FOUND");
   }
 
   if (payload.email && payload.email !== user.email) {
     const duplicateEmail = await User.findOne({ email: payload.email });
     if (duplicateEmail) {
-      const error = new Error("Email is already registered");
-      error.statusCode = 409;
-      throw error;
+      throw new AppError("Email is already registered", 409, "DUPLICATE_EMAIL");
     }
   }
 
@@ -157,9 +150,7 @@ export const deleteUserByAdmin = async (id) => {
   const user = await User.findById(id);
 
   if (!user) {
-    const error = new Error("User not found");
-    error.statusCode = 404;
-    throw error;
+    throw new AppError("User not found", 404, "USER_NOT_FOUND");
   }
 
   user.isActive = false;

@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import env from "../config/env.js";
 import User from "../models/user.model.js";
+import AppError from "../utils/appError.js";
 
 export const protect = async (req, res, next) => {
   const authHeader = req.headers.authorization || "";
@@ -9,7 +10,7 @@ export const protect = async (req, res, next) => {
     : null;
 
   if (!token) {
-    return res.status(401).json({ success: false, message: "Unauthorized" });
+    return next(new AppError("Unauthorized", 401, "UNAUTHORIZED"));
   }
 
   try {
@@ -17,22 +18,22 @@ export const protect = async (req, res, next) => {
     const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
-      return res.status(401).json({ success: false, message: "Invalid token user" });
+      return next(new AppError("Invalid token user", 401, "UNAUTHORIZED"));
     }
     if (!user.isActive) {
-      return res.status(403).json({ success: false, message: "Account is deactivated" });
+      return next(new AppError("Account is deactivated", 403, "ACCOUNT_DEACTIVATED"));
     }
 
     req.user = user;
     next();
   } catch (error) {
-    return res.status(401).json({ success: false, message: "Invalid or expired token" });
+    return next(new AppError("Invalid or expired token", 401, "UNAUTHORIZED"));
   }
 };
 
 export const authorize = (...roles) => (req, res, next) => {
   if (!req.user || !roles.includes(req.user.role)) {
-    return res.status(403).json({ success: false, message: "Forbidden" });
+    return next(new AppError("Forbidden", 403, "FORBIDDEN"));
   }
 
   next();

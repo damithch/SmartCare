@@ -1,13 +1,12 @@
 import { createUser, findUserByEmail } from "./user.service.js";
 import { generateToken } from "../utils/jwt.js";
+import AppError from "../utils/appError.js";
 
 export const registerService = async ({ fullName, email, password, role }) => {
   const existingUser = await findUserByEmail(email);
 
   if (existingUser) {
-    const error = new Error("Email is already registered");
-    error.statusCode = 409;
-    throw error;
+    throw new AppError("Email is already registered", 409, "DUPLICATE_EMAIL");
   }
 
   const user = await createUser({ fullName, email, password, role });
@@ -21,23 +20,17 @@ export const loginService = async ({ email, password }) => {
   const user = await findUserByEmail(email);
 
   if (!user) {
-    const error = new Error("Invalid email or password");
-    error.statusCode = 401;
-    throw error;
+    throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");
   }
 
   if (!user.isActive) {
-    const error = new Error("Account is deactivated");
-    error.statusCode = 403;
-    throw error;
+    throw new AppError("Account is deactivated", 403, "ACCOUNT_DEACTIVATED");
   }
 
   const isMatched = await user.comparePassword(password);
 
   if (!isMatched) {
-    const error = new Error("Invalid email or password");
-    error.statusCode = 401;
-    throw error;
+    throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");
   }
 
   const token = generateToken({ id: user._id, role: user.role });

@@ -8,6 +8,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "test": "node --test --experimental-test-isolation=none tests/unit/**/*.test.js",
+    "test:jest": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "test:jest:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "lint": "echo \"Add eslint config\""
   },
   "dependencies": {
@@ -20,6 +22,8 @@
     "morgan": "^1.10.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.4",
+    "supertest": "^7.2.2"
   }
 }
