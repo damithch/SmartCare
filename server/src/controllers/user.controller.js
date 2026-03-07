@@ -4,6 +4,7 @@ import {
   deleteUserByAdmin,
   getAllUsers,
   getUserById,
+  updateMyProfile,
   updateUserByAdmin
 } from "../services/user.service.js";
 
@@ -31,6 +32,20 @@ export const getMyProfile = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: user
+  });
+});
+
+export const updateOwnProfile = asyncHandler(async (req, res) => {
+  const updatedUser = await updateMyProfile(req.user._id, req.user.role, {
+    fullName: req.body.fullName,
+    email: req.body.email,
+    password: req.body.password
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Profile updated successfully",
+    data: updatedUser
   });
 });
 

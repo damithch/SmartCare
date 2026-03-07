@@ -1,4 +1,12 @@
 import User from "../models/user.model.js";
+import { ROLES } from "../constants/roles.js";
+
+const SELF_PROFILE_FIELD_ALLOWLIST = {
+  [ROLES.PATIENT]: ["fullName", "email", "password"],
+  [ROLES.DOCTOR]: ["fullName", "email", "password"],
+  [ROLES.NURSE]: ["fullName", "password"],
+  [ROLES.STAFF]: ["fullName", "password"]
+};
 
 export const findUserByEmail = (email) => User.findOne({ email }).select("+password");
 
@@ -55,6 +63,55 @@ export const getAllUsers = async ({
 };
 
 export const getUserById = (id) => User.findById(id).select("-password");
+
+export const updateMyProfile = async (userId, role, payload) => {
+  const allowedFields = SELF_PROFILE_FIELD_ALLOWLIST[role];
+
+  if (!allowedFields) {
+    const error = new Error("Your role is not allowed to update profile here");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const providedKeys = Object.keys(payload).filter((key) => payload[key] !== undefined);
+  const disallowedKeys = providedKeys.filter((key) => !allowedFields.includes(key));
+
+  if (disallowedKeys.length > 0) {
+    const error = new Error(`Not allowed fields: ${disallowedKeys.join(", ")}`);
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (providedKeys.length === 0) {
+    const error = new Error("Provide at least one field to update");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const user = await User.findById(userId).select("+password");
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (payload.email && payload.email !== user.email) {
+    const duplicateEmail = await User.findOne({ email: payload.email });
+    if (duplicateEmail) {
+      const error = new Error("Email is already registered");
+      error.statusCode = 409;
+      throw error;
+    }
+  }
+
+  for (const key of providedKeys) {
+    user[key] = payload[key];
+  }
+
+  await user.save();
+  return User.findById(user._id).select("-password");
+};
 
 export const createUserByAdmin = async ({ fullName, email, password, role }) => {
   const existingUser = await User.findOne({ email });
