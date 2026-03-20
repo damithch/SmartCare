@@ -1,53 +1,50 @@
+import Joi from "joi";
 import { ROLES } from "../constants/roles.js";
-import { isValidEmail, isValidPassword } from "./common.js";
 
-export const validateRegister = (payload) => {
-  const value = {
-    fullName: typeof payload.fullName === "string" ? payload.fullName.trim() : payload.fullName,
-    email: typeof payload.email === "string" ? payload.email.trim().toLowerCase() : payload.email,
-    password: payload.password,
-    role: payload.role || ROLES.PATIENT
-  };
+export const validateRegister = Joi.object({
+  fullName: Joi.string()
+    .min(2)
+    .max(100)
+    .required()
+    .messages({
+      "string.empty": "Full name is required",
+      "string.min": "Full name must be at least 2 characters",
+      "string.max": "Full name must not exceed 100 characters"
+    }),
+  email: Joi.string()
+    .email()
+    .required()
+    .messages({
+      "string.email": "Please provide a valid email",
+      "string.empty": "Email is required"
+    }),
+  password: Joi.string()
+    .min(6)
+    .required()
+    .messages({
+      "string.min": "Password must be at least 6 characters",
+      "string.empty": "Password is required"
+    }),
+  role: Joi.string()
+    .valid(...Object.values(ROLES))
+    .optional()
+    .default(ROLES.PATIENT)
+    .messages({
+      "any.only": `Role must be one of: ${Object.values(ROLES).join(", ")}`
+    })
+});
 
-  const errors = [];
-
-  if (!value.fullName || value.fullName.length < 2) {
-    errors.push({ field: "fullName", message: "fullName must be at least 2 characters" });
-  }
-
-  if (!value.email || !isValidEmail(value.email)) {
-    errors.push({ field: "email", message: "email must be a valid email address" });
-  }
-
-  if (!value.password || !isValidPassword(value.password)) {
-    errors.push({
-      field: "password",
-      message: "password must be at least 6 chars and include letters and numbers"
-    });
-  }
-
-  if (!Object.values(ROLES).includes(value.role)) {
-    errors.push({ field: "role", message: "role is invalid" });
-  }
-
-  return { value, errors };
-};
-
-export const validateLogin = (payload) => {
-  const value = {
-    email: typeof payload.email === "string" ? payload.email.trim().toLowerCase() : payload.email,
-    password: payload.password
-  };
-
-  const errors = [];
-
-  if (!value.email || !isValidEmail(value.email)) {
-    errors.push({ field: "email", message: "email must be a valid email address" });
-  }
-
-  if (!value.password) {
-    errors.push({ field: "password", message: "password is required" });
-  }
-
-  return { value, errors };
-};
+export const validateLogin = Joi.object({
+  email: Joi.string()
+    .email()
+    .required()
+    .messages({
+      "string.email": "Please provide a valid email",
+      "string.empty": "Email is required"
+    }),
+  password: Joi.string()
+    .required()
+    .messages({
+      "string.empty": "Password is required"
+    })
+});

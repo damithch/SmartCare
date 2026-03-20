@@ -1,13 +1,26 @@
 import AppError from "../utils/appError.js";
 
-export const validate = (validator, source = "body") => (req, res, next) => {
-  const payload = req[source] || {};
-  const { value, errors } = validator(payload);
+export const validate = (schema, source = "body") => {
+  return (req, res, next) => {
+    const dataToValidate = req[source];
 
-  if (errors.length > 0) {
-    return next(new AppError("Validation failed", 400, "VALIDATION_ERROR", errors));
-  }
+    const { error, value } = schema.validate(dataToValidate, {
+      abortEarly: false,
+      stripUnknown: true
+    });
 
-  req[source] = value;
-  return next();
+    if (error) {
+      const details = error.details.reduce((acc, err) => {
+        acc[err.path.join(".")] = err.message;
+        return acc;
+      }, {});
+
+      return next(
+        new AppError("Validation failed", 400, "VALIDATION_ERROR", details)
+      );
+    }
+
+    req[source] = value;
+    next();
+  };
 };
