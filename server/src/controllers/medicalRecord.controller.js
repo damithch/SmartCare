@@ -1,0 +1,152 @@
+import asyncHandler from "../utils/asyncHandler.js";
+import AppError from "../utils/appError.js";
+import * as medicalRecordService from "../services/medicalRecord.service.js";
+
+export const createMedicalRecord = asyncHandler(async (req, res) => {
+  const { patientId, appointmentId, visitReason, symptoms, vitals, notes } = req.body;
+
+  const record = await medicalRecordService.createMedicalRecord(
+    { patientId, appointmentId, visitReason, symptoms, vitals, notes },
+    req.user._id
+  );
+
+  res.status(201).json({
+    success: true,
+    message: "Medical record created successfully",
+    data: record
+  });
+});
+
+export const getMedicalRecord = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const record = await medicalRecordService.getMedicalRecordById(id);
+
+  // Authorization: Patient views own, Doctor views their patients, Admin/Nurse view all
+  const canView =
+    req.user._id.toString() === record.patient._id.toString() ||
+    req.user._id.toString() === record.doctor._id.toString() ||
+    ["admin", "system_admin", "nurse"].includes(req.user.role);
+
+  if (!canView) {
+    throw new AppError("Not authorized to view this record", 403, "FORBIDDEN");
+  }
+
+  res.status(200).json({
+    success: true,
+    data: record
+  });
+});
+
+export const getMyMedicalRecords = asyncHandler(async (req, res) => {
+  const { page, limit, status, sortBy, sortOrder } = req.query;
+
+  const result = await medicalRecordService.getPatientMedicalRecords(req.user._id, {
+    page,
+    limit,
+    status,
+    sortBy,
+    sortOrder
+  });
+
+  res.status(200).json({
+    success: true,
+    data: result.records,
+    pagination: result.pagination
+  });
+});
+
+export const getPatientRecords = asyncHandler(async (req, res) => {
+  const { patientId } = req.params;
+  const { page, limit, status, sortBy, sortOrder } = req.query;
+
+  const result = await medicalRecordService.getDoctorPatientRecords(req.user._id, {
+    page,
+    limit,
+    patientId,
+    status,
+    sortBy,
+    sortOrder
+  });
+
+  res.status(200).json({
+    success: true,
+    data: result.records,
+    pagination: result.pagination
+  });
+});
+
+export const updateMedicalRecord = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { visitReason, symptoms, vitals, notes, followUpRequired, followUpDate, status } = req.body;
+
+  const record = await medicalRecordService.updateMedicalRecord(
+    id,
+    { visitReason, symptoms, vitals, notes, followUpRequired, followUpDate, status },
+    req.user._id
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Medical record updated successfully",
+    data: record
+  });
+});
+
+export const addDiagnosis = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { title, description, additionalNotes } = req.body;
+
+  const record = await medicalRecordService.addDiagnosis(
+    id,
+    { title, description, additionalNotes },
+    req.user._id
+  );
+
+  res.status(201).json({
+    success: true,
+    message: "Diagnosis added successfully",
+    data: record
+  });
+});
+
+export const addPrescription = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { medicineName, dosage, frequency, duration, instructions } = req.body;
+
+  const record = await medicalRecordService.addPrescription(
+    id,
+    { medicineName, dosage, frequency, duration, instructions },
+    req.user._id
+  );
+
+  res.status(201).json({
+    success: true,
+    message: "Prescription added successfully",
+    data: record
+  });
+});
+
+export const removeDiagnosis = asyncHandler(async (req, res) => {
+  const { id, diagnosisId } = req.params;
+
+  const record = await medicalRecordService.removeDiagnosis(id, diagnosisId, req.user._id);
+
+  res.status(200).json({
+    success: true,
+    message: "Diagnosis removed successfully",
+    data: record
+  });
+});
+
+export const removePrescription = asyncHandler(async (req, res) => {
+  const { id, prescriptionId } = req.params;
+
+  const record = await medicalRecordService.removePrescription(id, prescriptionId, req.user._id);
+
+  res.status(200).json({
+    success: true,
+    message: "Prescription removed successfully",
+    data: record
+  });
+});
