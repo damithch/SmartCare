@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticate, authorize } from "../middlewares/auth.middleware.js";
+import { protect, authorize } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import * as paymentController from "../controllers/payment.controller.js";
 import * as paymentValidation from "../validators/payment.validation.js";
@@ -8,7 +8,7 @@ import { ROLES } from "../constants/roles.js";
 const router = express.Router();
 
 // All routes require authentication
-router.use(authenticate);
+router.use(protect);
 
 // POST /payments - Process payment (billing staff, receptionist, admin)
 router.post(

@@ -7,6 +7,7 @@ import medicalRecordRoutes from "./medicalRecord.routes.js";
 import medicineRoutes from "./medicine.routes.js";
 import billRoutes from "./bill.routes.js";
 import paymentRoutes from "./payment.routes.js";
+import labRoutes from "./lab.routes.js";
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use("/medical-records", medicalRecordRoutes);
 router.use("/medicines", medicineRoutes);
 router.use("/bills", billRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/lab", labRoutes);
 
 export default router;
