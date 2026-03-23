@@ -1,6 +1,8 @@
 import { Router } from "express";
 import {
   createMedicalRecord,
+  saveConsultation,
+  getAppointmentMedicalRecord,
   getMedicalRecord,
   getMyMedicalRecords,
   getPatientRecords,
@@ -15,16 +17,17 @@ import { ROLES } from "../constants/roles.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
   validateCreateMedicalRecord,
+  validateConsultationPayload,
   validateUpdateMedicalRecord,
   validateAddDiagnosis,
   validateAddPrescription,
   validateMedicalRecordQuery,
-  validateMongoIdParam
+  validateMongoIdParam,
+  validateAppointmentMedicalRecordParam
 } from "../validators/medicalRecord.validation.js";
 
 const router = Router();
 
-// Get patient's own medical records
 router.get(
   "/my",
   protect,
@@ -32,7 +35,14 @@ router.get(
   getMyMedicalRecords
 );
 
-// Get specific medical record by ID
+router.get(
+  "/appointment/:appointmentId",
+  protect,
+  authorize(ROLES.DOCTOR, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.NURSE),
+  validate(validateAppointmentMedicalRecordParam, "params"),
+  getAppointmentMedicalRecord
+);
+
 router.get(
   "/:id",
   protect,
@@ -40,7 +50,6 @@ router.get(
   getMedicalRecord
 );
 
-// Get doctor's patient records
 router.get(
   "/patient/:patientId",
   protect,
@@ -50,7 +59,14 @@ router.get(
   getPatientRecords
 );
 
-// Create medical record (doctors only)
+router.post(
+  "/consultation",
+  protect,
+  authorize(ROLES.DOCTOR),
+  validate(validateConsultationPayload),
+  saveConsultation
+);
+
 router.post(
   "/",
   protect,
@@ -59,7 +75,6 @@ router.post(
   createMedicalRecord
 );
 
-// Update medical record (doctor who created it)
 router.patch(
   "/:id",
   protect,
@@ -69,7 +84,6 @@ router.patch(
   updateMedicalRecord
 );
 
-// Add diagnosis (doctors only)
 router.post(
   "/:id/diagnoses",
   protect,
@@ -79,7 +93,6 @@ router.post(
   addDiagnosis
 );
 
-// Add prescription (doctors only)
 router.post(
   "/:id/prescriptions",
   protect,
@@ -89,7 +102,6 @@ router.post(
   addPrescription
 );
 
-// Remove diagnosis (doctors only)
 router.delete(
   "/:id/diagnoses/:diagnosisId",
   protect,
@@ -98,7 +110,6 @@ router.delete(
   removeDiagnosis
 );
 
-// Remove prescription (doctors only)
 router.delete(
   "/:id/prescriptions/:prescriptionId",
   protect,

@@ -1,12 +1,11 @@
 import asyncHandler from "../utils/asyncHandler.js";
-import AppError from "../utils/appError.js";
 import * as appointmentService from "../services/appointment.service.js";
 
 export const createAppointment = asyncHandler(async (req, res) => {
-  const { patientId, doctorId, appointmentDate } = req.body;
+  const { patientId, doctorId, appointmentDate, availabilityId } = req.body;
 
   const appointment = await appointmentService.createAppointment(
-    { patientId, doctorId, appointmentDate },
+    { patientId, doctorId, appointmentDate, availabilityId },
     req.user._id,
     req.user.role
   );
@@ -14,6 +13,43 @@ export const createAppointment = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: "Appointment created successfully",
+    data: appointment
+  });
+});
+
+export const createAppointmentCheckout = asyncHandler(async (req, res) => {
+  const checkout = await appointmentService.createAppointmentCheckout(
+    {
+      patientId: req.body.patientId,
+      doctorId: req.body.doctorId,
+      availabilityId: req.body.availabilityId
+    },
+    req.user._id,
+    req.user.role
+  );
+
+  res.status(201).json({
+    success: true,
+    message: "Payment intent created successfully",
+    data: checkout
+  });
+});
+
+export const confirmAppointmentPayment = asyncHandler(async (req, res) => {
+  const appointment = await appointmentService.confirmAppointmentPayment(
+    {
+      patientId: req.body.patientId,
+      doctorId: req.body.doctorId,
+      availabilityId: req.body.availabilityId,
+      paymentIntentId: req.body.paymentIntentId
+    },
+    req.user._id,
+    req.user.role
+  );
+
+  res.status(201).json({
+    success: true,
+    message: "Appointment booked and paid successfully",
     data: appointment
   });
 });

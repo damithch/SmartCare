@@ -1,5 +1,4 @@
 import Joi from "joi";
-import { ROLES } from "../constants/roles.js";
 
 export const validateCreateAppointment = Joi.object({
   patientId: Joi.string()
@@ -19,12 +18,56 @@ export const validateCreateAppointment = Joi.object({
   appointmentDate: Joi.date()
     .iso()
     .min("now")
-    .required()
+    .optional()
     .messages({
       "date.base": "Invalid date format",
-      "date.min": "Appointment date cannot be in the past",
-      "any.required": "Appointment date is required"
+      "date.min": "Appointment date cannot be in the past"
+    }),
+  availabilityId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional()
+    .messages({
+      "string.pattern.base": "Invalid availability slot ID format"
     })
+}).or("appointmentDate", "availabilityId");
+
+export const validateAppointmentCheckout = Joi.object({
+  patientId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid patient ID format",
+      "string.empty": "Patient ID is required"
+    }),
+  doctorId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid doctor ID format",
+      "string.empty": "Doctor ID is required"
+    }),
+  availabilityId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid availability slot ID format",
+      "string.empty": "Availability slot ID is required"
+    })
+});
+
+export const validateConfirmAppointmentPayment = Joi.object({
+  patientId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required(),
+  doctorId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required(),
+  availabilityId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required(),
+  paymentIntentId: Joi.string().required().messages({
+    "string.empty": "Payment intent ID is required"
+  })
 });
 
 export const validateUpdateAppointment = Joi.object({

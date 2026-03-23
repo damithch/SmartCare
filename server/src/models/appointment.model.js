@@ -12,6 +12,10 @@ const appointmentSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
+    availabilitySlot: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DoctorAvailability"
+    },
     appointmentDate: {
       type: Date,
       required: true
@@ -20,6 +24,25 @@ const appointmentSchema = new mongoose.Schema(
       type: String,
       enum: ["scheduled", "completed", "cancelled"],
       default: "scheduled"
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed", "refunded"],
+      default: "pending"
+    },
+    paymentIntentId: {
+      type: String,
+      unique: true,
+      sparse: true
+    },
+    amountPaid: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    paymentCurrency: {
+      type: String,
+      default: "usd"
     }
   },
   { timestamps: true }

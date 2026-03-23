@@ -1,6 +1,8 @@
 import { Router } from "express";
 import {
   createAppointment,
+  createAppointmentCheckout,
+  confirmAppointmentPayment,
   getAppointment,
   listAppointments,
   listAllAppointments,
@@ -12,6 +14,8 @@ import { ROLES } from "../constants/roles.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
   validateCreateAppointment,
+  validateAppointmentCheckout,
+  validateConfirmAppointmentPayment,
   validateUpdateAppointment,
   validateAppointmentQuery,
   validateMongoIdParam
@@ -19,7 +23,6 @@ import {
 
 const router = Router();
 
-// Get all appointments (admins only)
 router.get(
   "/",
   protect,
@@ -28,7 +31,6 @@ router.get(
   listAllAppointments
 );
 
-// Get user's appointments (patients, doctors, admins)
 router.get(
   "/my",
   protect,
@@ -36,7 +38,22 @@ router.get(
   listAppointments
 );
 
-// Get specific appointment by ID
+router.post(
+  "/checkout-intent",
+  protect,
+  authorize(ROLES.PATIENT, ROLES.ADMIN, ROLES.SYSTEM_ADMIN),
+  validate(validateAppointmentCheckout),
+  createAppointmentCheckout
+);
+
+router.post(
+  "/confirm-payment",
+  protect,
+  authorize(ROLES.PATIENT, ROLES.ADMIN, ROLES.SYSTEM_ADMIN),
+  validate(validateConfirmAppointmentPayment),
+  confirmAppointmentPayment
+);
+
 router.get(
   "/:id",
   protect,
@@ -44,7 +61,6 @@ router.get(
   getAppointment
 );
 
-// Create appointment
 router.post(
   "/",
   protect,
@@ -52,7 +68,6 @@ router.post(
   createAppointment
 );
 
-// Update appointment
 router.patch(
   "/:id",
   protect,
@@ -61,7 +76,6 @@ router.patch(
   updateAppointment
 );
 
-// Cancel appointment
 router.delete(
   "/:id",
   protect,

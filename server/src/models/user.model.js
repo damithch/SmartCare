@@ -52,6 +52,15 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: ""
     },
+    specialization: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    consultationFee: {
+      type: Number,
+      default: 0
+    },
     avatar: {
       type: String,
       trim: true,

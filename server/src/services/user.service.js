@@ -4,7 +4,7 @@ import AppError from "../utils/appError.js";
 
 const SELF_PROFILE_FIELD_ALLOWLIST = {
   [ROLES.PATIENT]: ["fullName", "email", "password", "phone", "avatar", "coverImage"],
-  [ROLES.DOCTOR]: ["fullName", "email", "password", "phone", "bio", "avatar", "coverImage"],
+  [ROLES.DOCTOR]: ["fullName", "email", "password", "phone", "bio", "specialization", "consultationFee", "avatar", "coverImage"],
   [ROLES.PHARMACIST]: ["fullName", "email", "password", "phone", "avatar", "coverImage"],
   [ROLES.STUDENT]: ["fullName", "email", "password", "phone", "studentId", "department", "level", "bio", "avatar", "coverImage"],
   [ROLES.NURSE]: ["fullName", "password"],
@@ -66,6 +66,24 @@ export const getAllUsers = async ({
 };
 
 export const getUserById = (id) => User.findById(id).select("-password");
+
+export const getDoctorDirectory = async ({ search = "" } = {}) => {
+  const query = {
+    role: ROLES.DOCTOR,
+    isActive: true
+  };
+
+  if (search) {
+    query.$or = [
+      { fullName: { $regex: search, $options: "i" } },
+      { specialization: { $regex: search, $options: "i" } }
+    ];
+  }
+
+  return User.find(query)
+    .select("fullName email phone specialization consultationFee bio avatar")
+    .sort({ fullName: 1 });
+};
 
 export const updateMyProfile = async (userId, role, payload) => {
   const allowedFields = SELF_PROFILE_FIELD_ALLOWLIST[role];

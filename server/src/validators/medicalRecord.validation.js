@@ -39,6 +39,42 @@ export const validateCreateMedicalRecord = Joi.object({
   notes: Joi.string().max(2000).optional()
 });
 
+export const validateConsultationPayload = Joi.object({
+  patientId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required(),
+  appointmentId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required(),
+  visitReason: Joi.string().max(500).required(),
+  symptoms: Joi.string().max(1000).required(),
+  vitals: Joi.object({
+    bloodPressure: Joi.string().allow("").optional(),
+    temperature: Joi.string().allow("").optional(),
+    heartRate: Joi.string().allow("").optional(),
+    respiratoryRate: Joi.string().allow("").optional(),
+    weight: Joi.string().allow("").optional(),
+    height: Joi.string().allow("").optional()
+  }).optional(),
+  diagnoses: Joi.array().items(
+    Joi.object({
+      title: Joi.string().max(200).required(),
+      description: Joi.string().max(1000).required(),
+      additionalNotes: Joi.string().max(500).allow("").optional()
+    })
+  ).min(1).required(),
+  prescriptions: Joi.array().items(
+    Joi.object({
+      medicineName: Joi.string().max(200).required(),
+      dosage: Joi.string().max(100).required(),
+      frequency: Joi.string()
+        .valid("Once daily", "Twice daily", "Three times daily", "Four times daily", "As needed")
+        .required(),
+      duration: Joi.string().max(100).required(),
+      instructions: Joi.string().max(500).allow("").optional()
+    })
+  ).required(),
+  notes: Joi.string().max(2000).allow("").optional(),
+  followUpRequired: Joi.boolean().optional(),
+  followUpDate: Joi.date().optional()
+});
+
 export const validateAddDiagnosis = Joi.object({
   title: Joi.string()
     .max(200)
@@ -134,4 +170,11 @@ export const validateMongoIdParam = Joi.object({
       "string.pattern.base": "Invalid medical record ID format",
       "string.empty": "Medical record ID is required"
     })
+});
+
+export const validateAppointmentMedicalRecordParam = Joi.object({
+  appointmentId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
+    "string.pattern.base": "Invalid appointment ID format",
+    "string.empty": "Appointment ID is required"
+  })
 });

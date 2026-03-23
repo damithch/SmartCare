@@ -17,12 +17,48 @@ export const createMedicalRecord = asyncHandler(async (req, res) => {
   });
 });
 
+export const saveConsultation = asyncHandler(async (req, res) => {
+  const record = await medicalRecordService.saveConsultationForAppointment(
+    {
+      patientId: req.body.patientId,
+      appointmentId: req.body.appointmentId,
+      visitReason: req.body.visitReason,
+      symptoms: req.body.symptoms,
+      vitals: req.body.vitals,
+      diagnoses: req.body.diagnoses,
+      prescriptions: req.body.prescriptions,
+      notes: req.body.notes,
+      followUpRequired: req.body.followUpRequired,
+      followUpDate: req.body.followUpDate
+    },
+    req.user._id
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Consultation saved successfully",
+    data: record
+  });
+});
+
+export const getAppointmentMedicalRecord = asyncHandler(async (req, res) => {
+  const record = await medicalRecordService.getMedicalRecordByAppointment(req.params.appointmentId, req.user._id);
+
+  if (!record) {
+    throw new AppError("Medical record not found for this appointment", 404, "RECORD_NOT_FOUND");
+  }
+
+  res.status(200).json({
+    success: true,
+    data: record
+  });
+});
+
 export const getMedicalRecord = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const record = await medicalRecordService.getMedicalRecordById(id);
 
-  // Authorization: Patient views own, Doctor views their patients, Admin/Nurse view all
   const canView =
     req.user._id.toString() === record.patient._id.toString() ||
     req.user._id.toString() === record.doctor._id.toString() ||

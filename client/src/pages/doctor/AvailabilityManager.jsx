@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   CalendarIcon,
@@ -7,229 +7,259 @@ import {
   Trash2Icon,
   SunIcon,
   MoonIcon,
-  CloudIcon } from
-'lucide-react';
+  CloudIcon,
+  BadgeDollarSignIcon,
+  UsersIcon
+} from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
-import { mockTimeSlots } from '../../data/mockData';
+import {
+  createMyAvailability,
+  deleteMyAvailability,
+  fetchMyAvailability
+} from '../../services/auth';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 
+const getToday = () => new Date().toISOString().split('T')[0];
+
+const toDisplayTime = (time24) => {
+  const [hours = '00', minutes = '00'] = String(time24 || '').split(':');
+  const hour = Number.parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+};
+
+const formatPrice = (value) => `$${Number(value || 0).toFixed(2)}`;
+
 export const AvailabilityManager = () => {
-  const { user } = useAppContext();
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split('T')[0]
-  );
-  const [slots, setSlots] = useState(
-    mockTimeSlots.filter((ts) => ts.doctorId === user?.id)
-  );
-  // New slot form state
+  const { user, token } = useAppContext();
+  const [selectedDate, setSelectedDate] = useState(getToday());
+  const [slots, setSlots] = useState([]);
   const [newStartTime, setNewStartTime] = useState('09:00');
   const [newEndTime, setNewEndTime] = useState('09:30');
-  if (!user) return null;
-  const currentDaySlots = slots.filter((ts) => ts.date === selectedDate);
-  const handleAddSlot = (e) => {
-    e.preventDefault();
-    const newSlot = {
-      id: `ts-${Date.now()}`,
-      doctorId: user.id,
-      date: selectedDate,
-      startTime: formatTime(newStartTime),
-      endTime: formatTime(newEndTime),
-      isBooked: false
+  const [newPrice, setNewPrice] = useState('25');
+  const [newMaxPatients, setNewMaxPatients] = useState('1');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!user || !token) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadSlots = async () => {
+      setIsLoading(true);
+      setError('');
+
+      try {
+        const data = await fetchMyAvailability(token, selectedDate);
+        if (isMounted) {
+          setSlots(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message || 'Failed to load availability');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     };
-    setSlots([...slots, newSlot]);
+
+    loadSlots();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDate, token, user]);
+
+  const currentDaySlots = useMemo(() => [...slots].sort((a, b) => a.startTime.localeCompare(b.startTime)), [slots]);
+
+  if (!user) {
+    return null;
+  }
+
+  const handleAddSlot = async (event) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setError('');
+
+    try {
+      const createdSlot = await createMyAvailability(token, {
+        date: selectedDate,
+        startTime: newStartTime,
+        endTime: newEndTime,
+        price: Number(newPrice),
+        maxPatients: Number(newMaxPatients)
+      });
+
+      setSlots((current) => [...current, createdSlot]);
+    } catch (err) {
+      setError(err.message || 'Failed to create slot');
+    } finally {
+      setIsSaving(false);
+    }
   };
-  const handleDeleteSlot = (id) => {
-    setSlots(slots.filter((s) => s.id !== id));
+
+  const handleDeleteSlot = async (id) => {
+    setError('');
+
+    try {
+      await deleteMyAvailability(token, id);
+      setSlots((current) => current.filter((slot) => slot._id !== id));
+    } catch (err) {
+      setError(err.message || 'Failed to delete slot');
+    }
   };
-  const formatTime = (time24) => {
-    const [hours, minutes] = time24.split(':');
-    const h = parseInt(hours, 10);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const h12 = h % 12 || 12;
-    return `${h12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
-  };
+
   const getSlotIcon = (time) => {
-    if (time.includes('AM'))
-    return <SunIcon className="w-4 h-4 text-amber-500" />;
-    const hour = parseInt(time.split(':')[0]);
-    if (time.includes('PM') && (hour === 12 || hour < 5))
-    return <CloudIcon className="w-4 h-4 text-orange-500" />;
-    return <MoonIcon className="w-4 h-4 text-indigo-500" />;
+    if (time.includes('AM')) {
+      return <SunIcon className="h-4 w-4 text-amber-500" />;
+    }
+
+    const hour = Number.parseInt(time.split(':')[0], 10);
+
+    if (time.includes('PM') && (hour === 12 || hour < 5)) {
+      return <CloudIcon className="h-4 w-4 text-orange-500" />;
+    }
+
+    return <MoonIcon className="h-4 w-4 text-indigo-500" />;
   };
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Availability Manager
-        </h1>
-        <p className="text-slate-500 mt-1">
-          Set your consultation hours for patients to book.
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">Availability Manager</h1>
+        <p className="mt-1 text-slate-500">Set consultation hours, price, and person count per slot so patients see real booking capacity.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar Column */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-900 flex items-center">
-                <CalendarIcon className="w-4 h-4 mr-2 text-blue-600" />
-                October 2023
-              </h3>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-500 mb-2">
-              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) =>
-              <div key={d}>{d}</div>
-              )}
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-sm">
-              {Array.from({
-                length: 31
-              }).map((_, i) => {
-                const day = i + 1;
-                const dateStr = `2023-10-${day.toString().padStart(2, '0')}`;
-                const isSelected = selectedDate === dateStr;
-                const hasSlots = slots.some((s) => s.date === dateStr);
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedDate(dateStr)}
-                    className={`aspect-square rounded-full flex flex-col items-center justify-center relative transition-colors ${isSelected ? 'bg-blue-600 text-white font-bold shadow-md' : 'hover:bg-slate-100 text-slate-700'}`}>
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
-                    <span>{day}</span>
-                    {hasSlots && !isSelected &&
-                    <span className="absolute bottom-1 w-1 h-1 bg-blue-500 rounded-full"></span>
-                    }
-                  </button>);
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-1">
+          <Card className="p-5">
+            <h3 className="mb-4 flex items-center font-semibold text-slate-900">
+              <CalendarIcon className="mr-2 h-4 w-4 text-blue-600" />
+              Select Date
+            </h3>
+            <Input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} min={getToday()} />
+          </Card>
 
-              })}
-            </div>
+          <Card className="border-blue-100 bg-blue-50/70 p-5">
+            <h3 className="mb-3 flex items-center font-semibold text-slate-900">
+              <UsersIcon className="mr-2 h-4 w-4 text-blue-600" />
+              Capacity Notice
+            </h3>
+            <p className="text-sm leading-6 text-slate-600">
+              Each slot can now accept multiple patients. The slot stays open until the person count is fully booked.
+            </p>
           </Card>
         </div>
 
-        {/* Slots Column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           <Card className="p-6">
-            <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+            <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Time Slots
-                </h2>
+                <h2 className="text-lg font-semibold text-slate-900">Time Slots</h2>
                 <p className="text-sm text-slate-500">
                   {new Date(selectedDate).toLocaleDateString(undefined, {
                     weekday: 'long',
                     month: 'long',
-                    day: 'numeric'
+                    day: 'numeric',
+                    year: 'numeric'
                   })}
                 </p>
               </div>
               <Badge variant="info">{currentDaySlots.length} Slots</Badge>
             </div>
 
-            {/* Add Slot Form */}
-            <form
-              onSubmit={handleAddSlot}
-              className="flex items-end gap-4 mb-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
-
-              <div className="flex-1">
-                <Input
-                  label="Start Time"
-                  type="time"
-                  value={newStartTime}
-                  onChange={(e) => setNewStartTime(e.target.value)}
-                  required />
-
+            <form onSubmit={handleAddSlot} className="mb-8 grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-5">
+              <div>
+                <Input label="Start Time" type="time" value={newStartTime} onChange={(event) => setNewStartTime(event.target.value)} required />
               </div>
-              <div className="flex-1">
-                <Input
-                  label="End Time"
-                  type="time"
-                  value={newEndTime}
-                  onChange={(e) => setNewEndTime(e.target.value)}
-                  required />
-
+              <div>
+                <Input label="End Time" type="time" value={newEndTime} onChange={(event) => setNewEndTime(event.target.value)} required />
               </div>
-              <Button type="submit" className="shrink-0">
-                <PlusIcon className="w-4 h-4 mr-2" /> Add Slot
-              </Button>
+              <div>
+                <Input label="Price" type="number" min="0" step="0.01" value={newPrice} onChange={(event) => setNewPrice(event.target.value)} required />
+              </div>
+              <div>
+                <Input label="Person Count" type="number" min="1" step="1" value={newMaxPatients} onChange={(event) => setNewMaxPatients(event.target.value)} required />
+              </div>
+              <div className="flex items-end">
+                <Button type="submit" className="w-full" isLoading={isSaving}>
+                  <PlusIcon className="mr-2 h-4 w-4" /> Add Slot
+                </Button>
+              </div>
             </form>
 
-            {/* Existing Slots List */}
             <div className="space-y-3">
-              {currentDaySlots.length > 0 ?
-              currentDaySlots.
-              sort((a, b) => a.startTime.localeCompare(b.startTime)).
-              map((slot) =>
-              <motion.div
-                key={slot.id}
-                initial={{
-                  opacity: 0,
-                  y: 10
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0
-                }}
-                exit={{
-                  opacity: 0,
-                  scale: 0.95
-                }}
-                className={`flex items-center justify-between p-4 rounded-xl border ${slot.isBooked ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200 hover:border-blue-300'}`}>
+              {isLoading ? (
+                <div className="py-8 text-center text-slate-500">
+                  <ClockIcon className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+                  <p>Loading availability...</p>
+                </div>
+              ) : currentDaySlots.length > 0 ? (
+                currentDaySlots.map((slot) => {
+                  const startTime = toDisplayTime(slot.startTime);
+                  const endTime = toDisplayTime(slot.endTime);
 
+                  return (
+                    <motion.div
+                      key={slot._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className={`flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between ${slot.isBooked ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-white hover:border-blue-300'}`}
+                    >
                       <div className="flex items-center space-x-4">
-                        <div
-                    className={`p-2 rounded-lg ${slot.isBooked ? 'bg-slate-200' : 'bg-blue-50'}`}>
-
-                          {getSlotIcon(slot.startTime)}
+                        <div className={`rounded-lg p-2 ${slot.isBooked ? 'bg-slate-200' : 'bg-blue-50'}`}>
+                          {getSlotIcon(startTime)}
                         </div>
                         <div>
-                          <p
-                      className={`font-semibold ${slot.isBooked ? 'text-slate-500' : 'text-slate-900'}`}>
-
-                            {slot.startTime} - {slot.endTime}
-                          </p>
-                          {slot.isBooked ?
-                    <span className="text-xs font-medium text-amber-600 flex items-center mt-1">
-                              <ClockIcon className="w-3 h-3 mr-1" /> Booked
-                            </span> :
-
-                    <span className="text-xs font-medium text-emerald-600 flex items-center mt-1">
-                              Available
+                          <p className={`font-semibold ${slot.isBooked ? 'text-slate-500' : 'text-slate-900'}`}>{startTime} - {endTime}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-3">
+                            <span className="inline-flex items-center text-xs font-medium text-emerald-600">
+                              <BadgeDollarSignIcon className="mr-1 h-3 w-3" /> {formatPrice(slot.price)}
                             </span>
-                    }
+                            <span className="inline-flex items-center text-xs font-medium text-blue-600">
+                              <UsersIcon className="mr-1 h-3 w-3" /> {slot.bookedCount || 0}/{slot.maxPatients || 1} booked
+                            </span>
+                            {slot.isBooked ? (
+                              <span className="inline-flex items-center text-xs font-medium text-amber-600">
+                                <ClockIcon className="mr-1 h-3 w-3" /> Full
+                              </span>
+                            ) : (
+                              <span className="text-xs font-medium text-emerald-600">{slot.availableSpots || ((slot.maxPatients || 1) - (slot.bookedCount || 0))} spots left</span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      <button
-                  onClick={() => handleDeleteSlot(slot.id)}
-                  disabled={slot.isBooked}
-                  className={`p-2 rounded-lg transition-colors ${slot.isBooked ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}`}
-                  title={
-                  slot.isBooked ?
-                  'Cannot delete booked slot' :
-                  'Delete slot'
-                  }>
-
-                        <Trash2Icon className="w-5 h-5" />
+                      <button type="button" onClick={() => handleDeleteSlot(slot._id)} disabled={slot.bookedCount > 0 || slot.isBooked} className={`rounded-lg p-2 transition-colors ${slot.bookedCount > 0 || slot.isBooked ? 'cursor-not-allowed text-slate-300' : 'text-slate-400 hover:bg-red-50 hover:text-red-600'}`} title={slot.bookedCount > 0 || slot.isBooked ? 'Cannot delete booked slot' : 'Delete slot'}>
+                        <Trash2Icon className="h-5 w-5" />
                       </button>
                     </motion.div>
-              ) :
-
-              <div className="text-center py-8 text-slate-500">
-                  <ClockIcon className="w-8 h-8 mx-auto mb-3 text-slate-300" />
+                  );
+                })
+              ) : (
+                <div className="py-8 text-center text-slate-500">
+                  <ClockIcon className="mx-auto mb-3 h-8 w-8 text-slate-300" />
                   <p>No slots configured for this date.</p>
-                  <p className="text-sm mt-1">
-                    Add slots using the form above.
-                  </p>
+                  <p className="mt-1 text-sm">Add slots using the form above.</p>
                 </div>
-              }
+              )}
             </div>
           </Card>
         </div>
       </div>
-    </div>);
-
+    </div>
+  );
 };

@@ -20,6 +20,17 @@ export const listUsers = asyncHandler(async (req, res) => {
   });
 });
 
+export const listDoctors = asyncHandler(async (req, res) => {
+  const doctors = await userService.getDoctorDirectory({
+    search: req.query.search
+  });
+
+  res.status(200).json({
+    success: true,
+    data: doctors
+  });
+});
+
 export const getMyProfile = asyncHandler(async (req, res) => {
   const user = await userService.getUserById(req.user._id);
 
@@ -39,6 +50,8 @@ export const updateOwnProfile = asyncHandler(async (req, res) => {
     department: req.body.department,
     level: req.body.level,
     bio: req.body.bio,
+    specialization: req.body.specialization,
+    consultationFee: req.body.consultationFee,
     avatar: req.body.avatar,
     coverImage: req.body.coverImage
   });

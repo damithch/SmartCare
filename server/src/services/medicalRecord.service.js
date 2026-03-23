@@ -1,13 +1,49 @@
 import MedicalRecord from "../models/medicalRecord.model.js";
 import User from "../models/user.model.js";
+import Appointment from "../models/appointment.model.js";
 import AppError from "../utils/appError.js";
 import { ROLES } from "../constants/roles.js";
+
+const populateRecordById = (recordId) =>
+  MedicalRecord.findById(recordId)
+    .populate("patient", "fullName email phone avatar")
+    .populate("doctor", "fullName email")
+    .populate({
+      path: "appointment",
+      populate: [
+        { path: "patient", select: "fullName email phone avatar" },
+        { path: "doctor", select: "fullName email specialization avatar" }
+      ]
+    });
+
+const getValidatedAppointment = async (appointmentId, patientId, doctorId) => {
+  if (!appointmentId) {
+    return null;
+  }
+
+  const appointment = await Appointment.findById(appointmentId)
+    .populate("patient", "fullName email phone avatar")
+    .populate("doctor", "fullName email specialization avatar");
+
+  if (!appointment) {
+    throw new AppError("Appointment not found", 404, "APPOINTMENT_NOT_FOUND");
+  }
+
+  if (appointment.doctor._id.toString() !== doctorId.toString()) {
+    throw new AppError("Appointment does not belong to this doctor", 403, "FORBIDDEN");
+  }
+
+  if (patientId && appointment.patient._id.toString() !== patientId.toString()) {
+    throw new AppError("Appointment does not belong to this patient", 400, "PATIENT_APPOINTMENT_MISMATCH");
+  }
+
+  return appointment;
+};
 
 export const createMedicalRecord = async (
   { patientId, appointmentId, visitReason, symptoms, vitals, notes },
   doctorId
 ) => {
-  // Verify patient exists
   const patient = await User.findById(patientId);
   if (!patient) {
     throw new AppError("Patient not found", 404, "PATIENT_NOT_FOUND");
@@ -17,7 +53,6 @@ export const createMedicalRecord = async (
     throw new AppError("Patient account is deactivated", 403, "PATIENT_DEACTIVATED");
   }
 
-  // Verify doctor exists and is active
   const doctor = await User.findById(doctorId);
   if (!doctor || doctor.role !== ROLES.DOCTOR) {
     throw new AppError("Invalid doctor", 400, "INVALID_DOCTOR");
@@ -26,6 +61,8 @@ export const createMedicalRecord = async (
   if (!doctor.isActive) {
     throw new AppError("Doctor account is deactivated", 403, "DOCTOR_DEACTIVATED");
   }
+
+  await getValidatedAppointment(appointmentId, patientId, doctorId);
 
   const medicalRecord = await MedicalRecord.create({
     patient: patientId,
@@ -37,17 +74,85 @@ export const createMedicalRecord = async (
     notes
   });
 
-  return MedicalRecord.findById(medicalRecord._id)
-    .populate("patient", "fullName email")
+  return populateRecordById(medicalRecord._id);
+};
+
+export const saveConsultationForAppointment = async (
+  { patientId, appointmentId, visitReason, symptoms, vitals, diagnoses, prescriptions, notes, followUpRequired, followUpDate },
+  doctorId
+) => {
+  const patient = await User.findById(patientId);
+  if (!patient) {
+    throw new AppError("Patient not found", 404, "PATIENT_NOT_FOUND");
+  }
+
+  const appointment = await getValidatedAppointment(appointmentId, patientId, doctorId);
+
+  let record = await MedicalRecord.findOne({ appointment: appointmentId, doctor: doctorId });
+
+  if (!record) {
+    record = new MedicalRecord({
+      patient: patientId,
+      doctor: doctorId,
+      appointment: appointmentId
+    });
+  }
+
+  record.visitReason = visitReason;
+  record.symptoms = symptoms;
+  record.vitals = vitals || {};
+  record.notes = notes || "";
+  record.followUpRequired = Boolean(followUpRequired);
+  record.followUpDate = followUpRequired && followUpDate ? followUpDate : undefined;
+  record.status = "completed";
+  record.diagnoses = (diagnoses || []).map((diagnosis) => ({
+    title: diagnosis.title,
+    description: diagnosis.description,
+    additionalNotes: diagnosis.additionalNotes,
+    diagnosedBy: doctorId,
+    diagnosedAt: new Date()
+  }));
+  record.prescriptions = (prescriptions || []).map((prescription) => ({
+    medicineName: prescription.medicineName,
+    dosage: prescription.dosage,
+    frequency: prescription.frequency,
+    duration: prescription.duration,
+    instructions: prescription.instructions,
+    prescribedBy: doctorId,
+    prescribedAt: new Date()
+  }));
+
+  await record.save();
+
+  appointment.status = "completed";
+  await appointment.save();
+
+  return populateRecordById(record._id);
+};
+
+export const getMedicalRecordByAppointment = async (appointmentId, doctorId) => {
+  await getValidatedAppointment(appointmentId, null, doctorId);
+
+  const record = await MedicalRecord.findOne({ appointment: appointmentId, doctor: doctorId })
+    .populate("patient", "fullName email phone avatar")
     .populate("doctor", "fullName email")
-    .populate("appointment");
+    .populate({
+      path: "appointment",
+      populate: [
+        { path: "patient", select: "fullName email phone avatar" },
+        { path: "doctor", select: "fullName email specialization avatar" }
+      ]
+    });
+
+  if (!record) {
+    return null;
+  }
+
+  return record;
 };
 
 export const getMedicalRecordById = async (recordId) => {
-  const record = await MedicalRecord.findById(recordId)
-    .populate("patient", "fullName email")
-    .populate("doctor", "fullName email")
-    .populate("appointment");
+  const record = await populateRecordById(recordId);
 
   if (!record) {
     throw new AppError("Medical record not found", 404, "RECORD_NOT_FOUND");
@@ -109,7 +214,8 @@ export const getDoctorPatientRecords = async (
 
   const [records, total] = await Promise.all([
     MedicalRecord.find(query)
-      .populate("patient", "fullName email")
+      .populate("patient", "fullName email phone avatar")
+      .populate("appointment")
       .sort({ [safeSortBy]: safeSortOrder })
       .skip(skip)
       .limit(safeLimit),
@@ -133,7 +239,6 @@ export const updateMedicalRecord = async (recordId, payload, doctorId) => {
     throw new AppError("Medical record not found", 404, "RECORD_NOT_FOUND");
   }
 
-  // Only the doctor who created the record can update it
   if (record.doctor.toString() !== doctorId.toString()) {
     throw new AppError("Not authorized to update this record", 403, "FORBIDDEN");
   }
@@ -147,10 +252,7 @@ export const updateMedicalRecord = async (recordId, payload, doctorId) => {
   if (payload.status !== undefined) record.status = payload.status;
 
   await record.save();
-  return MedicalRecord.findById(recordId)
-    .populate("patient", "fullName email")
-    .populate("doctor", "fullName email")
-    .populate("appointment");
+  return populateRecordById(recordId);
 };
 
 export const addDiagnosis = async (recordId, diagnosisData, doctorId) => {
@@ -159,7 +261,6 @@ export const addDiagnosis = async (recordId, diagnosisData, doctorId) => {
     throw new AppError("Medical record not found", 404, "RECORD_NOT_FOUND");
   }
 
-  // Only the doctor who created the record can add diagnoses
   if (record.doctor.toString() !== doctorId.toString()) {
     throw new AppError("Not authorized to add diagnosis to this record", 403, "FORBIDDEN");
   }
@@ -175,10 +276,7 @@ export const addDiagnosis = async (recordId, diagnosisData, doctorId) => {
   record.diagnoses.push(diagnosis);
   await record.save();
 
-  return MedicalRecord.findById(recordId)
-    .populate("patient", "fullName email")
-    .populate("doctor", "fullName email")
-    .populate("appointment");
+  return populateRecordById(recordId);
 };
 
 export const addPrescription = async (recordId, prescriptionData, doctorId) => {
@@ -187,7 +285,6 @@ export const addPrescription = async (recordId, prescriptionData, doctorId) => {
     throw new AppError("Medical record not found", 404, "RECORD_NOT_FOUND");
   }
 
-  // Only the doctor who created the record can add prescriptions
   if (record.doctor.toString() !== doctorId.toString()) {
     throw new AppError("Not authorized to add prescription to this record", 403, "FORBIDDEN");
   }
@@ -205,10 +302,7 @@ export const addPrescription = async (recordId, prescriptionData, doctorId) => {
   record.prescriptions.push(prescription);
   await record.save();
 
-  return MedicalRecord.findById(recordId)
-    .populate("patient", "fullName email")
-    .populate("doctor", "fullName email")
-    .populate("appointment");
+  return populateRecordById(recordId);
 };
 
 export const removeDiagnosis = async (recordId, diagnosisId, doctorId) => {
@@ -229,10 +323,7 @@ export const removeDiagnosis = async (recordId, diagnosisId, doctorId) => {
   record.diagnoses.pull(diagnosisId);
   await record.save();
 
-  return MedicalRecord.findById(recordId)
-    .populate("patient", "fullName email")
-    .populate("doctor", "fullName email")
-    .populate("appointment");
+  return populateRecordById(recordId);
 };
 
 export const removePrescription = async (recordId, prescriptionId, doctorId) => {
@@ -253,8 +344,5 @@ export const removePrescription = async (recordId, prescriptionId, doctorId) => 
   record.prescriptions.pull(prescriptionId);
   await record.save();
 
-  return MedicalRecord.findById(recordId)
-    .populate("patient", "fullName email")
-    .populate("doctor", "fullName email")
-    .populate("appointment");
+  return populateRecordById(recordId);
 };

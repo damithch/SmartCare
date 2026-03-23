@@ -9,6 +9,7 @@ import billRoutes from "./bill.routes.js";
 import paymentRoutes from "./payment.routes.js";
 import labRoutes from "./lab.routes.js";
 import staffRoutes from "./staff.routes.js";
+import doctorAvailabilityRoutes from "./doctorAvailability.routes.js";
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use("/bills", billRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/lab", labRoutes);
 router.use("/staff", staffRoutes);
+router.use("/doctor-availability", doctorAvailabilityRoutes);
 
 export default router;

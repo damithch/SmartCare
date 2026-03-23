@@ -4,6 +4,7 @@ import {
   deleteUserAdmin,
   getMyProfile,
   getUserAdminById,
+  listDoctors,
   listUsers,
   updateOwnProfile,
   updateUserAdmin
@@ -14,6 +15,7 @@ import { validate } from "../middlewares/validate.middleware.js";
 import {
   validateAdminUpdateUser,
   validateCreateUser,
+  validateDoctorDirectoryQuery,
   validateMongoIdParam,
   validateSelfUpdateUser,
   validateUserListQuery
@@ -21,10 +23,11 @@ import {
 
 const router = Router();
 
+router.get("/doctors", protect, authorize(ROLES.PATIENT, ROLES.ADMIN, ROLES.SYSTEM_ADMIN), validate(validateDoctorDirectoryQuery, "query"), listDoctors);
 router.get("/me", protect, getMyProfile);
 router.patch("/me", protect, validate(validateSelfUpdateUser), updateOwnProfile);
 router.get("/", protect, authorize(ROLES.ADMIN, ROLES.SYSTEM_ADMIN), validate(validateUserListQuery, "query"), listUsers);
-router.get("/:id", protect, authorize(ROLES.ADMIN, ROLES.SYSTEM_ADMIN), validate(validateMongoIdParam, "params"), getUserAdminById);
+router.get("/:id", protect, authorize(ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.DOCTOR, ROLES.NURSE), validate(validateMongoIdParam, "params"), getUserAdminById);
 router.post("/", protect, authorize(ROLES.ADMIN), validate(validateCreateUser), createUserAdmin);
 router.patch("/:id", protect, authorize(ROLES.ADMIN), validate(validateMongoIdParam, "params"), validate(validateAdminUpdateUser), updateUserAdmin);
 router.delete("/:id", protect, authorize(ROLES.ADMIN), validate(validateMongoIdParam, "params"), deleteUserAdmin);

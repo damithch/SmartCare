@@ -7,9 +7,15 @@ const optionalProfileFields = {
   department: Joi.string().max(100).optional().allow(""),
   level: Joi.string().max(50).optional().allow(""),
   bio: Joi.string().max(500).optional().allow(""),
+  specialization: Joi.string().max(120).optional().allow(""),
+  consultationFee: Joi.number().min(0).optional(),
   avatar: Joi.string().max(10_000_000).optional().allow(""),
   coverImage: Joi.string().max(10_000_000).optional().allow("")
 };
+
+export const validateDoctorDirectoryQuery = Joi.object({
+  search: Joi.string().max(100).optional().allow("")
+});
 
 export const validateCreateUser = Joi.object({
   fullName: Joi.string()
