@@ -1,6 +1,8 @@
 import Joi from "joi";
 import { ROLES } from "../constants/roles.js";
 
+const SELF_SERVICE_ROLES = [ROLES.PATIENT, ROLES.DOCTOR, ROLES.PHARMACIST];
+
 export const validateRegister = Joi.object({
   fullName: Joi.string()
     .min(2)
@@ -26,11 +28,11 @@ export const validateRegister = Joi.object({
       "string.empty": "Password is required"
     }),
   role: Joi.string()
-    .valid(...Object.values(ROLES))
+    .valid(...SELF_SERVICE_ROLES)
     .optional()
     .default(ROLES.PATIENT)
     .messages({
-      "any.only": `Role must be one of: ${Object.values(ROLES).join(", ")}`
+      "any.only": `Role must be one of: ${SELF_SERVICE_ROLES.join(", ")}`
     })
 });
 
