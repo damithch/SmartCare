@@ -3,10 +3,10 @@ import { ROLES } from "../constants/roles.js";
 import AppError from "../utils/appError.js";
 
 const SELF_PROFILE_FIELD_ALLOWLIST = {
-  [ROLES.PATIENT]: ["fullName", "email", "password", "phone"],
-  [ROLES.DOCTOR]: ["fullName", "email", "password", "phone", "bio"],
-  [ROLES.PHARMACIST]: ["fullName", "email", "password", "phone"],
-  [ROLES.STUDENT]: ["fullName", "email", "password", "phone", "studentId", "department", "level", "bio"],
+  [ROLES.PATIENT]: ["fullName", "email", "password", "phone", "avatar", "coverImage"],
+  [ROLES.DOCTOR]: ["fullName", "email", "password", "phone", "bio", "avatar", "coverImage"],
+  [ROLES.PHARMACIST]: ["fullName", "email", "password", "phone", "avatar", "coverImage"],
+  [ROLES.STUDENT]: ["fullName", "email", "password", "phone", "studentId", "department", "level", "bio", "avatar", "coverImage"],
   [ROLES.NURSE]: ["fullName", "password"],
   [ROLES.STAFF]: ["fullName", "password"]
 };

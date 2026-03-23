@@ -7,7 +7,7 @@ import { errorHandler, notFoundHandler } from "./middlewares/error.middleware.js
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use(morgan("dev"));
 
 app.use("/api/v1", routes);

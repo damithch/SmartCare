@@ -22,7 +22,8 @@ const normalizeUser = (user) => {
     id: user.id || user._id || '',
     name: fullName,
     fullName,
-    avatar: user.avatar || ''
+    avatar: user.avatar || '',
+    coverImage: user.coverImage || ''
   };
 };
 

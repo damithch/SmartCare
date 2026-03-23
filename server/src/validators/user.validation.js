@@ -6,7 +6,9 @@ const optionalProfileFields = {
   studentId: Joi.string().max(50).optional().allow(""),
   department: Joi.string().max(100).optional().allow(""),
   level: Joi.string().max(50).optional().allow(""),
-  bio: Joi.string().max(500).optional().allow("")
+  bio: Joi.string().max(500).optional().allow(""),
+  avatar: Joi.string().max(10_000_000).optional().allow(""),
+  coverImage: Joi.string().max(10_000_000).optional().allow("")
 };
 
 export const validateCreateUser = Joi.object({

@@ -38,7 +38,9 @@ export const updateOwnProfile = asyncHandler(async (req, res) => {
     studentId: req.body.studentId,
     department: req.body.department,
     level: req.body.level,
-    bio: req.body.bio
+    bio: req.body.bio,
+    avatar: req.body.avatar,
+    coverImage: req.body.coverImage
   });
 
   res.status(200).json({

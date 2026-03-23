@@ -17,9 +17,19 @@ const getProfileState = (user) => ({
   department: user?.department || '',
   level: user?.level || '',
   bio: user?.bio || '',
+  avatar: user?.avatar || '',
+  coverImage: user?.coverImage || '',
   password: '',
   confirmPassword: ''
 });
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Failed to read image file.'));
+    reader.readAsDataURL(file);
+  });
 
 export const ProfilePage = () => {
   const { user, token, updateUser } = useAppContext();
@@ -83,6 +93,35 @@ export const ProfilePage = () => {
     }));
   };
 
+  const handleImageChange = (field) => async (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file.');
+      return;
+    }
+
+    if (file.size > 4 * 1024 * 1024) {
+      setError('Image must be 4MB or smaller.');
+      return;
+    }
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setFormData((current) => ({
+        ...current,
+        [field]: dataUrl
+      }));
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const showSuccessToast = () => {
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
@@ -97,7 +136,9 @@ export const ProfilePage = () => {
       const payload = {
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
-        phone: formData.phone.trim()
+        phone: formData.phone.trim(),
+        avatar: formData.avatar,
+        coverImage: formData.coverImage
       };
 
       if (isStudent) {
@@ -180,20 +221,39 @@ export const ProfilePage = () => {
       }
 
       <Card className="p-6 sm:p-8 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-blue-500 to-teal-400" />
+        <div
+          className="absolute top-0 left-0 w-full h-40 bg-gradient-to-r from-blue-500 to-teal-400 bg-cover bg-center"
+          style={formData.coverImage ? { backgroundImage: `url(${formData.coverImage})` } : undefined}
+        />
+        <label className="absolute top-4 right-4 z-10 cursor-pointer">
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageChange('coverImage')} />
+          <span className="inline-flex items-center rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-white">
+            <CameraIcon className="mr-2 h-4 w-4" />
+            Change Cover
+          </span>
+        </label>
         <div className="relative mt-12 sm:flex sm:items-end sm:space-x-5">
           <div className="relative group inline-block">
             <Avatar
               name={displayName}
-              src={user.avatar}
+              src={formData.avatar}
               size="xl"
               className="ring-4 ring-white" />
 
-            <button
-              type="button"
-              className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md text-slate-600 hover:text-blue-600 transition-colors">
-              <CameraIcon className="w-4 h-4" />
-            </button>
+            <label className="absolute bottom-0 right-0 cursor-pointer">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange('avatar')} />
+              <span className="inline-flex bg-white p-2 rounded-full shadow-md text-slate-600 hover:text-blue-600 transition-colors">
+                <CameraIcon className="w-4 h-4" />
+              </span>
+            </label>
           </div>
           <div className="mt-4 sm:mt-0 sm:flex-1 sm:pb-2">
             <div className="flex items-center space-x-3">

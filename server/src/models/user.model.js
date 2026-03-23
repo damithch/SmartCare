@@ -52,6 +52,16 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: ""
     },
+    avatar: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    coverImage: {
+      type: String,
+      trim: true,
+      default: ""
+    },
     isActive: {
       type: Boolean,
       default: true
