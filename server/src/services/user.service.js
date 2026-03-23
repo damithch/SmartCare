@@ -3,8 +3,10 @@ import { ROLES } from "../constants/roles.js";
 import AppError from "../utils/appError.js";
 
 const SELF_PROFILE_FIELD_ALLOWLIST = {
-  [ROLES.PATIENT]: ["fullName", "email", "password"],
-  [ROLES.DOCTOR]: ["fullName", "email", "password"],
+  [ROLES.PATIENT]: ["fullName", "email", "password", "phone"],
+  [ROLES.DOCTOR]: ["fullName", "email", "password", "phone", "bio"],
+  [ROLES.PHARMACIST]: ["fullName", "email", "password", "phone"],
+  [ROLES.STUDENT]: ["fullName", "email", "password", "phone", "studentId", "department", "level", "bio"],
   [ROLES.NURSE]: ["fullName", "password"],
   [ROLES.STAFF]: ["fullName", "password"]
 };
@@ -97,6 +99,10 @@ export const updateMyProfile = async (userId, role, payload) => {
     throw new AppError("User not found", 404, "USER_NOT_FOUND");
   }
 
+  if (payload.email) {
+    payload.email = payload.email.trim().toLowerCase();
+  }
+
   if (payload.email && payload.email !== user.email) {
     const duplicateEmail = await User.findOne({ email: payload.email });
     if (duplicateEmail) {
@@ -113,13 +119,14 @@ export const updateMyProfile = async (userId, role, payload) => {
 };
 
 export const createUserByAdmin = async ({ fullName, email, password, role }) => {
-  const existingUser = await User.findOne({ email });
+  const normalizedEmail = email.trim().toLowerCase();
+  const existingUser = await User.findOne({ email: normalizedEmail });
 
   if (existingUser) {
     throw new AppError("Email is already registered", 409, "DUPLICATE_EMAIL");
   }
 
-  const user = await User.create({ fullName, email, password, role });
+  const user = await User.create({ fullName, email: normalizedEmail, password, role });
   return User.findById(user._id).select("-password");
 };
 
@@ -131,6 +138,7 @@ export const updateUserByAdmin = async (id, payload) => {
   }
 
   if (payload.email && payload.email !== user.email) {
+    payload.email = payload.email.trim().toLowerCase();
     const duplicateEmail = await User.findOne({ email: payload.email });
     if (duplicateEmail) {
       throw new AppError("Email is already registered", 409, "DUPLICATE_EMAIL");

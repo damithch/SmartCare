@@ -33,7 +33,12 @@ export const updateOwnProfile = asyncHandler(async (req, res) => {
   const updatedUser = await userService.updateMyProfile(req.user._id, req.user.role, {
     fullName: req.body.fullName,
     email: req.body.email,
-    password: req.body.password
+    password: req.body.password,
+    phone: req.body.phone,
+    studentId: req.body.studentId,
+    department: req.body.department,
+    level: req.body.level,
+    bio: req.body.bio
   });
 
   res.status(200).json({

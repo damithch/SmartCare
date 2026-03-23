@@ -92,10 +92,17 @@ export const NavBar = () => {
     page: 'profile'
   }];
 
+  const studentLinks= [
+  {
+    name: 'Profile',
+    icon: UserIcon,
+    page: 'profile'
+  }];
+
   let links = patientLinks;
   if (user.role === 'doctor') links = doctorLinks;
   if (user.role === 'pharmacist') links = pharmacistLinks;
-  // Auto-scroll active tab into view
+  if (user.role === 'student') links = studentLinks;
   useEffect(() => {
     if (scrollRef.current) {
       const activeBtn = scrollRef.current.querySelector(
@@ -147,7 +154,6 @@ export const NavBar = () => {
         })}
       </div>
 
-      {/* Inline style to hide scrollbar but keep scroll functionality */}
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

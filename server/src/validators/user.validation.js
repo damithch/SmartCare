@@ -1,6 +1,14 @@
 import Joi from "joi";
 import { ROLES } from "../constants/roles.js";
 
+const optionalProfileFields = {
+  phone: Joi.string().max(30).optional().allow(""),
+  studentId: Joi.string().max(50).optional().allow(""),
+  department: Joi.string().max(100).optional().allow(""),
+  level: Joi.string().max(50).optional().allow(""),
+  bio: Joi.string().max(500).optional().allow("")
+};
+
 export const validateCreateUser = Joi.object({
   fullName: Joi.string()
     .min(2)
@@ -30,7 +38,8 @@ export const validateCreateUser = Joi.object({
     .messages({
       "any.only": `Role must be one of: ${Object.values(ROLES).join(", ")}`,
       "string.empty": "Role is required"
-    })
+    }),
+  ...optionalProfileFields
 });
 
 export const validateSelfUpdateUser = Joi.object({
@@ -52,7 +61,8 @@ export const validateSelfUpdateUser = Joi.object({
     .optional()
     .messages({
       "string.min": "Password must be at least 6 characters"
-    })
+    }),
+  ...optionalProfileFields
 }).min(1);
 
 export const validateAdminUpdateUser = Joi.object({
@@ -80,7 +90,8 @@ export const validateAdminUpdateUser = Joi.object({
     .optional()
     .messages({
       "any.only": `Role must be one of: ${Object.values(ROLES).join(", ")}`
-    })
+    }),
+  ...optionalProfileFields
 }).min(1);
 
 export const validateMongoIdParam = Joi.object({

@@ -106,10 +106,18 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
     section: 'OPERATIONS'
   }];
 
+  const studentLinks = [
+  {
+    name: 'My Profile',
+    icon: UserIcon,
+    page: 'profile',
+    section: 'ACCOUNT'
+  }];
+
   let links = patientLinks;
   if (user.role === 'doctor') links = doctorLinks;
   if (user.role === 'pharmacist') links = pharmacistLinks;
-  // Group links by section
+  if (user.role === 'student') links = studentLinks;
   const groupedLinks = links.reduce(
     (acc, link) => {
       if (!acc[link.section]) acc[link.section] = [];
@@ -120,7 +128,6 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
   );
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen &&
       <div
         className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-20 md:hidden"
@@ -128,7 +135,6 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
 
       }
 
-      {/* Sidebar */}
       <motion.aside
         initial={false}
         animate={{
@@ -197,7 +203,6 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
         </nav>
 
         <div className="p-4 border-t border-white/5 shrink-0 space-y-2">
-          {/* User Profile Card */}
           <div
             className="flex items-center p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors"
             onClick={() => navigate('profile')}>

@@ -6,7 +6,8 @@ const AUTH_STORAGE_KEY = 'smartcare.auth';
 const roleLandingPage = {
   patient: 'patient-dashboard',
   doctor: 'doctor-dashboard',
-  pharmacist: 'pharmacist-dashboard'
+  pharmacist: 'pharmacist-dashboard',
+  student: 'profile'
 };
 
 const normalizeUser = (user) => {
@@ -76,6 +77,10 @@ export const AppProvider = ({ children }) => {
     setCurrentPage(page);
   };
 
+  const updateUser = (nextUser) => {
+    setUser(normalizeUser(nextUser));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -83,6 +88,7 @@ export const AppProvider = ({ children }) => {
         token,
         login,
         logout,
+        updateUser,
         currentPage,
         navigate
       }}>

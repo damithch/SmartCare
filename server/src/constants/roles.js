@@ -2,6 +2,7 @@ export const ROLES = {
   ADMIN: "admin",
   DOCTOR: "doctor",
   PATIENT: "patient",
+  STUDENT: "student",
   NURSE: "nurse",
   STAFF: "staff",
   RECEPTIONIST: "receptionist",

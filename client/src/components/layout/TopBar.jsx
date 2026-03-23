@@ -21,6 +21,7 @@ export const TopBar = ({ toggleSidebar }) => {
   if (!user) return null;
   const displayName = user.fullName || user.name || 'User';
   const firstName = displayName.split(' ')[0] || 'User';
+  const homePage = user.role === 'student' ? 'profile' : `${user.role}-dashboard`;
   const getPageTitle = () => {
     const titles= {
       'patient-dashboard': 'Patient Dashboard',
@@ -74,11 +75,10 @@ export const TopBar = ({ toggleSidebar }) => {
           <MenuIcon className="h-6 w-6" />
         </button>
 
-        {/* Breadcrumbs */}
         <div className="hidden sm:flex items-center text-sm font-medium">
           <span
             className="text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
-            onClick={() => navigate(`${user.role}-dashboard`)}>
+            onClick={() => navigate(homePage)}>
 
             Home
           </span>
@@ -88,7 +88,6 @@ export const TopBar = ({ toggleSidebar }) => {
       </div>
 
       <div className="flex items-center space-x-3 sm:space-x-5">
-        {/* Notifications */}
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
@@ -171,7 +170,6 @@ export const TopBar = ({ toggleSidebar }) => {
           </AnimatePresence>
         </div>
 
-        {/* User Menu Chip */}
         <div className="relative">
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}

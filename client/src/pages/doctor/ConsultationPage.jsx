@@ -183,11 +183,11 @@ export const ConsultationPage = () => {
                   required />
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2 tracking-[0.01em]">
                     Detailed Notes
                   </label>
                   <textarea
-                    className="w-full rounded-lg border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 min-h-[150px]"
+                    className="w-full min-h-[150px] rounded-2xl border border-slate-300 bg-white/95 px-4 py-3 text-[15px] leading-6 text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                     placeholder="Enter patient symptoms, observations, and treatment plan..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}

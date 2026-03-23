@@ -27,6 +27,31 @@ const userSchema = new mongoose.Schema(
       enum: Object.values(ROLES),
       default: ROLES.PATIENT
     },
+    phone: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    studentId: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    department: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    level: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    bio: {
+      type: String,
+      trim: true,
+      default: ""
+    },
     isActive: {
       type: Boolean,
       default: true
