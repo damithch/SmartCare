@@ -79,6 +79,7 @@ const getDoctorName = (doctor) => doctor?.fullName || doctor?.name || 'Doctor';
 const getDoctorSpecialization = (doctor) => doctor?.specialization || 'General Practice';
 const getDoctorFee = (doctor) => Number(doctor?.consultationFee || 0);
 const getSlotPrice = (slot, doctor) => Number(slot?.price ?? getDoctorFee(doctor));
+const getSlotAvailableSpots = (slot) => Number(slot?.availableSpots ?? Math.max((slot?.maxPatients || 1) - (slot?.bookedCount || 0), 0));
 
 const AppointmentPaymentForm = ({
   checkout,
@@ -173,6 +174,16 @@ const AppointmentPaymentForm = ({
             <div className="flex items-center justify-between gap-3">
               <span className="text-slate-500">Charge</span>
               <span className="font-medium text-slate-900">{formatPrice(getSlotPrice(selectedSlot, selectedDoctor))}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-500">Capacity</span>
+              <span className="font-medium text-slate-900">
+                {selectedSlot.bookedCount || 0}/{selectedSlot.maxPatients || 1} booked
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-500">Spots Left</span>
+              <span className="font-medium text-emerald-600">{getSlotAvailableSpots(selectedSlot)}</span>
             </div>
           </div>
         </Card>
@@ -586,10 +597,22 @@ export const AppointmentBooking = () => {
                         </span>
                       </div>
                       {selectedSlot && (
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-slate-500">Chosen Slot</span>
-                          <span className="font-medium text-slate-900">{selectedDate} at {formatDisplayTime(selectedSlot.startTime)}</span>
-                        </div>
+                        <>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-slate-500">Chosen Slot</span>
+                            <span className="font-medium text-slate-900">{selectedDate} at {formatDisplayTime(selectedSlot.startTime)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-slate-500">Capacity</span>
+                            <span className="font-medium text-slate-900">
+                              {selectedSlot.bookedCount || 0}/{selectedSlot.maxPatients || 1} booked
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-slate-500">Spots Left</span>
+                            <span className="font-medium text-emerald-600">{getSlotAvailableSpots(selectedSlot)}</span>
+                          </div>
+                        </>
                       )}
                     </div>
                   </Card>
@@ -625,6 +648,8 @@ export const AppointmentBooking = () => {
                             <div>{formatDisplayTime(slot.startTime)}</div>
                             <div className="mt-1 text-xs text-slate-400">to {formatDisplayTime(slot.endTime)}</div>
                             <div className="mt-2 text-xs font-semibold text-emerald-600">{formatPrice(getSlotPrice(slot, selectedDoctor))}</div>
+                            <div className="mt-1 text-xs text-blue-600">{slot.bookedCount || 0}/{slot.maxPatients || 1} booked</div>
+                            <div className="mt-1 text-xs text-slate-500">{getSlotAvailableSpots(slot)} spots left</div>
                           </button>
                         ))}
                         {morningSlots.length === 0 && <p className="col-span-full text-sm text-slate-500">No morning slots available for this date.</p>}
@@ -650,6 +675,8 @@ export const AppointmentBooking = () => {
                             <div>{formatDisplayTime(slot.startTime)}</div>
                             <div className="mt-1 text-xs text-slate-400">to {formatDisplayTime(slot.endTime)}</div>
                             <div className="mt-2 text-xs font-semibold text-emerald-600">{formatPrice(getSlotPrice(slot, selectedDoctor))}</div>
+                            <div className="mt-1 text-xs text-blue-600">{slot.bookedCount || 0}/{slot.maxPatients || 1} booked</div>
+                            <div className="mt-1 text-xs text-slate-500">{getSlotAvailableSpots(slot)} spots left</div>
                           </button>
                         ))}
                         {afternoonSlots.length === 0 && <p className="col-span-full text-sm text-slate-500">No afternoon slots available for this date.</p>}
@@ -756,6 +783,11 @@ export const AppointmentBooking = () => {
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Paid Amount</p>
                 <p className="mt-2 text-lg font-semibold text-slate-900">{formatPrice(confirmation.amountPaid || getSlotPrice(selectedSlot, selectedDoctor))}</p>
                 <p className="mt-1 text-sm text-slate-500">Stripe payment status: {confirmation.paymentStatus || 'paid'}</p>
+                {confirmation.availabilitySlot && (
+                  <p className="mt-1 text-sm text-slate-500">
+                    Slot capacity: {confirmation.availabilitySlot.bookedCount || 0}/{confirmation.availabilitySlot.maxPatients || 1} booked
+                  </p>
+                )}
               </div>
             </Card>
 
