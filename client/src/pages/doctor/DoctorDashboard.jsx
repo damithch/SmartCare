@@ -58,6 +58,8 @@ const Sparkline = ({
 export const DoctorDashboard = () => {
   const { user, navigate } = useAppContext();
   if (!user) return null;
+  const displayName = user.fullName || user.name || 'Doctor';
+  const lastName = displayName.split(' ').pop() || 'Doctor';
   const today = new Date().toISOString().split('T')[0];
   const todaysAppointments = mockAppointments.filter(
     (a) => a.doctorId === user.id && a.date === today
@@ -146,7 +148,7 @@ export const DoctorDashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            Welcome back, Dr. {user.name.split(' ').pop()}
+            Welcome back, Dr. {lastName}
           </h1>
           <p className="text-slate-500 mt-1 font-medium">
             {currentDate} • Here's your practice overview.

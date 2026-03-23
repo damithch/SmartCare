@@ -9,10 +9,34 @@ const roleLandingPage = {
   pharmacist: 'pharmacist-dashboard'
 };
 
+const normalizeUser = (user) => {
+  if (!user) {
+    return null;
+  }
+
+  const fullName = user.fullName || user.name || 'User';
+
+  return {
+    ...user,
+    id: user.id || user._id || '',
+    name: fullName,
+    fullName,
+    avatar: user.avatar || ''
+  };
+};
+
 const getStoredSession = () => {
   try {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) {
+      return null;
+    }
+
+    const session = JSON.parse(raw);
+    return {
+      ...session,
+      user: normalizeUser(session.user)
+    };
   } catch {
     return null;
   }
@@ -36,9 +60,10 @@ export const AppProvider = ({ children }) => {
   }, [token, user]);
 
   const login = (session) => {
-    setUser(session.user);
+    const normalizedUser = normalizeUser(session.user);
+    setUser(normalizedUser);
     setToken(session.token);
-    setCurrentPage(roleLandingPage[session.user.role] || 'home');
+    setCurrentPage(roleLandingPage[normalizedUser.role] || 'home');
   };
 
   const logout = () => {

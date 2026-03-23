@@ -19,6 +19,8 @@ export const TopBar = ({ toggleSidebar }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   if (!user) return null;
+  const displayName = user.fullName || user.name || 'User';
+  const firstName = displayName.split(' ')[0] || 'User';
   const getPageTitle = () => {
     const titles= {
       'patient-dashboard': 'Patient Dashboard',
@@ -175,10 +177,10 @@ export const TopBar = ({ toggleSidebar }) => {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center space-x-2 pl-1 pr-3 py-1 rounded-full hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all">
 
-            <Avatar name={user.name} src={user.avatar} size="sm" />
+            <Avatar name={displayName} src={user.avatar} size="sm" />
             <div className="hidden sm:flex flex-col items-start text-left">
               <span className="text-sm font-semibold text-slate-700 leading-tight">
-                {user.name.split(' ')[0]}
+                {firstName}
               </span>
               <span className="text-[10px] font-medium text-slate-500 capitalize leading-tight">
                 {user.role}
@@ -211,7 +213,7 @@ export const TopBar = ({ toggleSidebar }) => {
 
                 <div className="px-4 py-3 border-b border-slate-100 mb-2 bg-slate-50/50">
                   <p className="text-sm font-bold text-slate-900 truncate">
-                    {user.name}
+                    {displayName}
                   </p>
                   <p className="text-xs text-slate-500 truncate">
                     {user.email}

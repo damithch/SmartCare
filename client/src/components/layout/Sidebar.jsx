@@ -33,6 +33,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
   }, []);
 
   if (!user) return null;
+  const displayName = user.fullName || user.name || 'User';
   const patientLinks = [
   {
     name: 'Dashboard',
@@ -202,14 +203,14 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
             onClick={() => navigate('profile')}>
 
             <Avatar
-              name={user.name}
+              name={displayName}
               src={user.avatar}
               size="sm"
               className="ring-2 ring-slate-800" />
 
             <div className="ml-3 flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">
-                {user.name}
+                {displayName}
               </p>
               <p className="text-xs text-slate-400 capitalize truncate">
                 {user.role}

@@ -55,6 +55,8 @@ const Sparkline = ({
 export const PatientDashboard = () => {
   const { user, navigate } = useAppContext();
   if (!user) return null;
+  const displayName = user.fullName || user.name || 'User';
+  const firstName = displayName.split(' ')[0] || 'User';
   const upcomingAppointments = mockAppointments.filter(
     (a) => a.status === 'confirmed' || a.status === 'pending'
   );
@@ -138,7 +140,7 @@ export const PatientDashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            Good morning, {user.name.split(' ')[0]}
+            Good morning, {firstName}
           </h1>
           <p className="text-slate-500 mt-1 font-medium">
             {currentDate} • Here's your health overview.

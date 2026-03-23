@@ -12,6 +12,7 @@ export const ProfilePage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
   if (!user) return null;
+  const displayName = user.fullName || user.name || 'User';
   const handleSave = (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -51,7 +52,7 @@ export const ProfilePage = () => {
         <div className="relative mt-12 sm:flex sm:items-end sm:space-x-5">
           <div className="relative group inline-block">
             <Avatar
-              name={user.name}
+              name={displayName}
               src={user.avatar}
               size="xl"
               className="ring-4 ring-white" />
@@ -63,7 +64,7 @@ export const ProfilePage = () => {
           <div className="mt-4 sm:mt-0 sm:flex-1 sm:pb-2">
             <div className="flex items-center space-x-3">
               <h1 className="text-2xl font-bold text-slate-900 truncate">
-                {user.name}
+                {displayName}
               </h1>
               <Badge variant="info" className="capitalize">
                 {user.role}
@@ -105,7 +106,7 @@ export const ProfilePage = () => {
             </h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input label="Full Name" defaultValue={user.name} />
+                <Input label="Full Name" defaultValue={displayName} />
                 <Input
                   label="Email Address"
                   type="email"

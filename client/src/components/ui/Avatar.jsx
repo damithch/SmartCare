@@ -13,7 +13,8 @@ export const Avatar = ({
     lg: 'h-16 w-16 text-lg',
     xl: 'h-24 w-24 text-2xl'
   };
-  const initials = name.
+  const safeName = typeof name === 'string' && name.trim() ? name.trim() : 'User';
+  const initials = safeName.
   split(' ').
   map((n) => n[0]).
   join('').
@@ -26,7 +27,7 @@ export const Avatar = ({
       {src ?
       <img
         src={src}
-        alt={alt || name}
+        alt={alt || safeName}
         className="h-full w-full object-cover" /> :
 
 
