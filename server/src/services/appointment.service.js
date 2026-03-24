@@ -381,6 +381,40 @@ export const getAllAppointments = async ({ page = 1, limit = 10, status, doctorI
   };
 };
 
+export const getPatientUpcomingAppointments = async (patientId, requesterId, requesterRole) => {
+  const isAdmin = [ROLES.ADMIN, ROLES.SYSTEM_ADMIN].includes(requesterRole);
+  const isDoctorLike = [ROLES.DOCTOR, ROLES.NURSE].includes(requesterRole);
+  const isSamePatient = requesterRole === ROLES.PATIENT && String(requesterId) === String(patientId);
+
+  if (!isAdmin && !isDoctorLike && !isSamePatient) {
+    throw new AppError("Not authorized to view this patient's upcoming appointments", 403, "FORBIDDEN");
+  }
+
+  const patient = await User.findById(patientId).select("_id");
+
+  if (!patient) {
+    throw new AppError("Patient not found", 404, "PATIENT_NOT_FOUND");
+  }
+
+  const now = new Date();
+
+  const appointments = await Appointment.find({
+    patient: patientId,
+    appointmentDate: { $gte: now },
+    status: { $in: [APPOINTMENT_STATUS.PENDING, APPOINTMENT_STATUS.APPROVED] }
+  })
+    .populate("patient", "fullName email phone avatar")
+    .populate("doctor", "fullName email specialization avatar")
+    .populate("availabilitySlot")
+    .sort({ appointmentDate: 1 })
+    .limit(20);
+
+  return appointments.map((appointment) => ({
+    ...appointment.toObject(),
+    availabilitySlot: decorateSlot(appointment.availabilitySlot)
+  }));
+};
+
 export const updateAppointment = async (appointmentId, { appointmentDate, status }, userId, userRole) => {
   const appointment = await Appointment.findById(appointmentId);
 

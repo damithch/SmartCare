@@ -101,6 +101,21 @@ export const listAllAppointments = asyncHandler(async (req, res) => {
   });
 });
 
+export const listPatientUpcomingAppointments = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const appointments = await appointmentService.getPatientUpcomingAppointments(
+    id,
+    req.user._id,
+    req.user.role
+  );
+
+  res.status(200).json({
+    success: true,
+    data: appointments
+  });
+});
+
 export const updateAppointment = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { appointmentDate, status } = req.body;

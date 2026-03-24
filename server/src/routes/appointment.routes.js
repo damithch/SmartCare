@@ -6,6 +6,7 @@ import {
   getAppointment,
   listAppointments,
   listAllAppointments,
+  listPatientUpcomingAppointments,
   updateAppointment,
   cancelAppointment
 } from "../controllers/appointment.controller.js";
@@ -52,6 +53,14 @@ router.post(
   authorize(ROLES.PATIENT, ROLES.ADMIN, ROLES.SYSTEM_ADMIN),
   validate(validateConfirmAppointmentPayment),
   confirmAppointmentPayment
+);
+
+router.get(
+  "/patient/:id/upcoming",
+  protect,
+  authorize(ROLES.DOCTOR, ROLES.NURSE, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.PATIENT),
+  validate(validateMongoIdParam, "params"),
+  listPatientUpcomingAppointments
 );
 
 router.get(

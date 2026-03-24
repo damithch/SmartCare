@@ -1,6 +1,8 @@
 import MedicalRecord from "../models/medicalRecord.model.js";
 import User from "../models/user.model.js";
 import Appointment from "../models/appointment.model.js";
+import Bill from "../models/bill.model.js";
+import Medicine from "../models/medicine.model.js";
 import AppError from "../utils/appError.js";
 import { ROLES } from "../constants/roles.js";
 
@@ -39,6 +41,107 @@ const getValidatedAppointment = async (appointmentId, patientId, doctorId) => {
 
   return appointment;
 };
+
+const syncMedicineBillForRecord = async (record, doctorId) => {
+  const prescriptions = record.prescriptions || [];
+  const billTag = `AUTO_MEDICINE_BILL:${record.appointment || record._id}`;
+
+  if (!prescriptions.length) {
+    await Bill.updateMany(
+      { patient: record.patient, notes: billTag, status: { $in: ["draft", "pending", "partial", "overdue"] } },
+      { isActive: false, status: "cancelled" }
+    );
+    return null;
+  }
+
+  const medicineNames = prescriptions.map((prescription) => prescription.medicineName).filter(Boolean);
+  const medicines = await Medicine.find({ name: { $in: medicineNames }, isActive: true }).select("name price");
+  const medicinePriceMap = new Map(medicines.map((medicine) => [medicine.name, medicine.price]));
+
+  const billItems = prescriptions.map((prescription) => {
+    const unitPrice = Number(medicinePriceMap.get(prescription.medicineName) || 0);
+    return {
+      description: `${prescription.medicineName} (${prescription.dosage}, ${prescription.frequency}, ${prescription.duration})`,
+      category: "medicine",
+      quantity: 1,
+      unitPrice,
+      totalPrice: unitPrice,
+      addedBy: doctorId,
+      addedAt: prescription.prescribedAt || new Date()
+    };
+  });
+
+  const subtotal = billItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 7);
+
+  let bill = await Bill.findOne({
+    patient: record.patient,
+    notes: billTag,
+    isActive: true,
+    status: { $in: ["draft", "pending", "partial", "overdue"] }
+  });
+
+  if (!bill) {
+    bill = new Bill({
+      patient: record.patient,
+      appointment: record.appointment,
+      generatedBy: doctorId,
+      notes: billTag
+    });
+  }
+
+  bill.billItems = billItems;
+  bill.subtotal = subtotal;
+  bill.discount = 0;
+  bill.taxPercentage = 0;
+  bill.taxAmount = 0;
+  bill.insuranceCoverage = 0;
+  bill.amountDue = subtotal;
+  bill.status = "pending";
+  bill.dueDate = dueDate;
+  bill.generatedBy = doctorId;
+  bill.isActive = true;
+
+  await bill.save();
+  return bill;
+};
+
+const getMedicineBillTag = (record) => `AUTO_MEDICINE_BILL:${record.appointment || record._id}`;
+
+const getMedicineBillForRecord = async (record) =>
+  Bill.findOne({
+    patient: record.patient,
+    notes: getMedicineBillTag(record),
+    isActive: true
+  }).sort({ createdAt: -1 });
+
+const buildPrescriptionQueueItem = (record, prescription, bill) => ({
+  id: `${record._id}:${prescription._id}`,
+  recordId: String(record._id),
+  prescriptionId: String(prescription._id),
+  patientName: record.patient?.fullName || "Patient",
+  patientEmail: record.patient?.email || "",
+  patientPhone: record.patient?.phone || "",
+  doctorName: record.doctor?.fullName || "Doctor",
+  doctorSpecialization: record.doctor?.specialization || "",
+  date: prescription.prescribedAt || record.createdAt,
+  status: prescription.status || "pending",
+  billId: bill ? String(bill._id) : "",
+  billNumber: bill?.billNumber || "",
+  billStatus: bill?.status || "pending",
+  amountDue: Number(bill?.amountDue || 0),
+  isPaid: Boolean(bill) && (bill.status === "paid" || Number(bill.amountDue || 0) <= 0),
+  medicines: [
+    {
+      name: prescription.medicineName,
+      dosage: prescription.dosage,
+      frequency: prescription.frequency,
+      duration: prescription.duration,
+      notes: prescription.instructions || ""
+    }
+  ]
+});
 
 export const createMedicalRecord = async (
   { patientId, appointmentId, visitReason, symptoms, vitals, notes },
@@ -106,6 +209,7 @@ export const saveConsultationForAppointment = async (
   record.followUpDate = followUpRequired && followUpDate ? followUpDate : undefined;
   record.status = "completed";
   record.diagnoses = (diagnoses || []).map((diagnosis) => ({
+    ...(diagnosis.id && !String(diagnosis.id).includes("-") ? { _id: diagnosis.id } : {}),
     title: diagnosis.title,
     description: diagnosis.description,
     additionalNotes: diagnosis.additionalNotes,
@@ -113,11 +217,13 @@ export const saveConsultationForAppointment = async (
     diagnosedAt: new Date()
   }));
   record.prescriptions = (prescriptions || []).map((prescription) => ({
+    ...(prescription.id && !String(prescription.id).includes("-") ? { _id: prescription.id } : {}),
     medicineName: prescription.medicineName,
     dosage: prescription.dosage,
     frequency: prescription.frequency,
     duration: prescription.duration,
     instructions: prescription.instructions,
+    status: prescription.status || "pending",
     prescribedBy: doctorId,
     prescribedAt: new Date()
   }));
@@ -126,6 +232,8 @@ export const saveConsultationForAppointment = async (
 
   appointment.status = "completed";
   await appointment.save();
+
+  await syncMedicineBillForRecord(record, doctorId);
 
   return populateRecordById(record._id);
 };
@@ -295,6 +403,7 @@ export const addPrescription = async (recordId, prescriptionData, doctorId) => {
     frequency: prescriptionData.frequency,
     duration: prescriptionData.duration,
     instructions: prescriptionData.instructions,
+    status: prescriptionData.status || "pending",
     prescribedBy: doctorId,
     prescribedAt: new Date()
   };
@@ -345,4 +454,61 @@ export const removePrescription = async (recordId, prescriptionId, doctorId) => 
   await record.save();
 
   return populateRecordById(recordId);
+};
+
+export const getPrescriptionQueue = async ({ status, search, limit = 100 } = {}) => {
+  const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 100, 1), 200);
+  const normalizedSearch = (search || "").trim().toLowerCase();
+
+  const records = await MedicalRecord.find({ "prescriptions.0": { $exists: true } })
+    .populate("patient", "fullName email phone avatar")
+    .populate("doctor", "fullName email specialization avatar")
+    .sort({ createdAt: -1 })
+    .limit(safeLimit);
+
+  const billEntries = await Promise.all(
+    records.map(async (record) => [String(record._id), await getMedicineBillForRecord(record)])
+  );
+  const billMap = new Map(billEntries);
+
+  return records.flatMap((record) =>
+    (record.prescriptions || [])
+      .filter((prescription) => !status || prescription.status === status)
+      .map((prescription) => buildPrescriptionQueueItem(record, prescription, billMap.get(String(record._id))))
+      .filter((item) => {
+        if (!normalizedSearch) {
+          return true;
+        }
+
+        return [item.patientName, item.patientEmail, item.doctorName, item.id]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(normalizedSearch));
+      })
+  );
+};
+
+export const updatePrescriptionStatus = async (recordId, prescriptionId, status) => {
+  const record = await MedicalRecord.findById(recordId)
+    .populate("patient", "fullName email phone avatar")
+    .populate("doctor", "fullName email specialization avatar");
+
+  if (!record) {
+    throw new AppError("Medical record not found", 404, "RECORD_NOT_FOUND");
+  }
+
+  const prescription = record.prescriptions.id(prescriptionId);
+  if (!prescription) {
+    throw new AppError("Prescription not found", 404, "PRESCRIPTION_NOT_FOUND");
+  }
+
+  const bill = await getMedicineBillForRecord(record);
+
+  if (status === "dispensed" && (!bill || (bill.status !== "paid" && Number(bill.amountDue || 0) > 0))) {
+    throw new AppError("Patient has not completed the medicine payment", 400, "MEDICINE_PAYMENT_REQUIRED");
+  }
+
+  prescription.status = status;
+  await record.save();
+
+  return buildPrescriptionQueueItem(record, prescription, bill);
 };

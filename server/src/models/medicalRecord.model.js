@@ -54,6 +54,11 @@ const prescriptionSchema = new mongoose.Schema(
       required: true
     },
     instructions: String,
+    status: {
+      type: String,
+      enum: ["pending", "processing", "dispensed", "unavailable"],
+      default: "pending"
+    },
     prescribedAt: {
       type: Date,
       default: Date.now

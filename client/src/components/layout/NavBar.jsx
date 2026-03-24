@@ -39,6 +39,11 @@ export const NavBar = () => {
     page: 'medical-history'
   },
   {
+    name: 'Medicine Payments',
+    icon: PillIcon,
+    page: 'medicine-payments'
+  },
+  {
     name: 'Profile',
     icon: UserIcon,
     page: 'profile'

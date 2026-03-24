@@ -3,15 +3,20 @@ import Refund from "../models/refund.model.js";
 import Bill from "../models/bill.model.js";
 import User from "../models/user.model.js";
 import AppError from "../utils/appError.js";
+import { ROLES } from "../constants/roles.js";
 
 // 1. Process payment
-export const processPayment = async (paymentData, processedBy) => {
+export const processPayment = async (paymentData, processedBy, processedByRole) => {
   const { bill: billId, amount, paymentMethod, cardDetails, checkDetails, insuranceDetails, bankTransferDetails, transactionReference, description } = paymentData;
 
   // Validate bill exists and get details
   const bill = await Bill.findById(billId);
   if (!bill) {
     throw new AppError("Bill not found", 404, "BILL_NOT_FOUND");
+  }
+
+  if (processedByRole === ROLES.PATIENT && bill.patient.toString() !== processedBy.toString()) {
+    throw new AppError("Patients can only pay their own bills", 403, "FORBIDDEN");
   }
 
   // Validate amount doesn't exceed bill amount

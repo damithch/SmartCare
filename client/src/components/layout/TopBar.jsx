@@ -27,6 +27,7 @@ export const TopBar = ({ toggleSidebar }) => {
       'book-appointment': 'Book Appointment',
       'my-appointments': 'My Appointments',
       'medical-history': 'Medical History',
+      'medicine-payments': 'Medicine Payments',
       'doctor-dashboard': 'Doctor Dashboard',
       approvals: 'Appointment Requests',
       'my-schedule': 'Appointment Management',

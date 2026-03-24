@@ -112,6 +112,17 @@ export const getPatientRecords = asyncHandler(async (req, res) => {
   });
 });
 
+export const getPrescriptionQueue = asyncHandler(async (req, res) => {
+  const { status, search, limit } = req.query;
+
+  const queue = await medicalRecordService.getPrescriptionQueue({ status, search, limit });
+
+  res.status(200).json({
+    success: true,
+    data: queue
+  });
+});
+
 export const updateMedicalRecord = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { visitReason, symptoms, vitals, notes, followUpRequired, followUpDate, status } = req.body;
@@ -184,5 +195,18 @@ export const removePrescription = asyncHandler(async (req, res) => {
     success: true,
     message: "Prescription removed successfully",
     data: record
+  });
+});
+
+export const updatePrescriptionStatus = asyncHandler(async (req, res) => {
+  const { id, prescriptionId } = req.params;
+  const { status } = req.body;
+
+  const prescription = await medicalRecordService.updatePrescriptionStatus(id, prescriptionId, status);
+
+  res.status(200).json({
+    success: true,
+    message: "Prescription status updated successfully",
+    data: prescription
   });
 });

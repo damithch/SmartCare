@@ -59,6 +59,12 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
     icon: FileTextIcon,
     page: 'medical-history',
     section: 'RECORDS'
+  },
+  {
+    name: 'Medicine Payments',
+    icon: PillIcon,
+    page: 'medicine-payments',
+    section: 'RECORDS'
   }];
 
   const doctorLinks = [

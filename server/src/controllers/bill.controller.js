@@ -22,16 +22,16 @@ export const createBill = asyncHandler(async (req, res) => {
 // Get all bills with filters
 export const getAllBills = asyncHandler(async (req, res) => {
   // Authorization: Allow billing staff, doctor, and admin
-  if (![ROLES.BILLING_STAFF, ROLES.DOCTOR, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.HOSPITAL_MANAGER].includes(req.user.role)) {
+  if (![ROLES.BILLING_STAFF, ROLES.DOCTOR, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.HOSPITAL_MANAGER, ROLES.PATIENT].includes(req.user.role)) {
     throw new AppError("Unauthorized to view bills", 403, "FORBIDDEN");
   }
 
   // Patients can only see their own bills
   if (req.user.role === ROLES.PATIENT) {
-    req.body.patient = req.user._id;
+    req.query.patient = req.user._id.toString();
   }
 
-  const result = await billService.getAllBills(req.body);
+  const result = await billService.getAllBills(req.query);
 
   return res.status(200).json({
     success: true,

@@ -6,11 +6,13 @@ import {
   getMedicalRecord,
   getMyMedicalRecords,
   getPatientRecords,
+  getPrescriptionQueue,
   updateMedicalRecord,
   addDiagnosis,
   addPrescription,
   removeDiagnosis,
-  removePrescription
+  removePrescription,
+  updatePrescriptionStatus
 } from "../controllers/medicalRecord.controller.js";
 import { authorize, protect } from "../middlewares/auth.middleware.js";
 import { ROLES } from "../constants/roles.js";
@@ -24,7 +26,10 @@ import {
   validateMedicalRecordQuery,
   validateMongoIdParam,
   validateAppointmentMedicalRecordParam,
-  validatePatientMedicalRecordParam
+  validatePatientMedicalRecordParam,
+  validateMedicalRecordPrescriptionParam,
+  validatePrescriptionQueueQuery,
+  validatePrescriptionStatusUpdate
 } from "../validators/medicalRecord.validation.js";
 
 const router = Router();
@@ -34,6 +39,14 @@ router.get(
   protect,
   validate(validateMedicalRecordQuery, "query"),
   getMyMedicalRecords
+);
+
+router.get(
+  "/prescriptions/queue",
+  protect,
+  authorize(ROLES.PHARMACIST, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.DOCTOR),
+  validate(validatePrescriptionQueueQuery, "query"),
+  getPrescriptionQueue
 );
 
 router.get(
@@ -115,8 +128,17 @@ router.delete(
   "/:id/prescriptions/:prescriptionId",
   protect,
   authorize(ROLES.DOCTOR),
-  validate(validateMongoIdParam, "params"),
+  validate(validateMedicalRecordPrescriptionParam, "params"),
   removePrescription
+);
+
+router.patch(
+  "/:id/prescriptions/:prescriptionId/status",
+  protect,
+  authorize(ROLES.PHARMACIST, ROLES.ADMIN, ROLES.SYSTEM_ADMIN),
+  validate(validateMedicalRecordPrescriptionParam, "params"),
+  validate(validatePrescriptionStatusUpdate),
+  updatePrescriptionStatus
 );
 
 export default router;

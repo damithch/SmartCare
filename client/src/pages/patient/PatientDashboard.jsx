@@ -9,7 +9,7 @@ import {
   LightbulbIcon
 } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
-import { fetchMyAppointments, fetchPatientMedicalRecords } from '../../services/auth';
+import { fetchMyAppointments, fetchMyMedicalRecords } from '../../services/auth';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -95,7 +95,7 @@ export const PatientDashboard = () => {
 
         const [appointmentData, recordData] = await Promise.all([
           fetchMyAppointments(token),
-          fetchPatientMedicalRecords(token, user.id)
+          fetchMyMedicalRecords(token)
         ]);
 
         if (!isMounted) {

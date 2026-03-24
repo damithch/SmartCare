@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  CalendarIcon,
   FileTextIcon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -8,9 +9,10 @@ import {
   StethoscopeIcon
 } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
-import { fetchPatientMedicalRecords } from '../../services/auth';
+import { fetchMyMedicalRecords } from '../../services/auth';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { Input } from '../../components/ui/Input';
 
 const formatRecordDate = (value) => {
   const date = new Date(value);
@@ -24,6 +26,16 @@ const formatRecordDate = (value) => {
     month: 'long',
     day: 'numeric'
   });
+};
+
+const getDateKey = (value) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toISOString().split('T')[0];
 };
 
 const getDiagnosisLabel = (record) => {
@@ -41,6 +53,7 @@ const getDiagnosisLabel = (record) => {
 export const MedicalHistory = () => {
   const { user, token } = useAppContext();
   const [expandedId, setExpandedId] = useState(null);
+  const [selectedDate, setSelectedDate] = useState('');
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -59,7 +72,7 @@ export const MedicalHistory = () => {
           setError('');
         }
 
-        const data = await fetchPatientMedicalRecords(token, user.id);
+        const data = await fetchMyMedicalRecords(token);
 
         if (isMounted) {
           setRecords(Array.isArray(data) ? data : []);
@@ -88,6 +101,25 @@ export const MedicalHistory = () => {
     [records]
   );
 
+  const availableDates = useMemo(
+    () => [...new Set(orderedRecords.map((record) => getDateKey(record.createdAt)).filter(Boolean))],
+    [orderedRecords]
+  );
+
+  useEffect(() => {
+    if (!selectedDate && availableDates.length > 0) {
+      setSelectedDate(availableDates[0]);
+    }
+  }, [availableDates, selectedDate]);
+
+  const filteredRecords = useMemo(() => {
+    if (!selectedDate) {
+      return orderedRecords;
+    }
+
+    return orderedRecords.filter((record) => getDateKey(record.createdAt) === selectedDate);
+  }, [orderedRecords, selectedDate]);
+
   if (!user) {
     return null;
   }
@@ -101,15 +133,57 @@ export const MedicalHistory = () => {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {!isLoading && availableDates.length > 0 && (
+        <Card className="space-y-4 p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Day By Day Records</h2>
+              <p className="mt-1 text-sm text-slate-500">Select a day to view that date's consultation notes, diagnoses, and prescriptions.</p>
+            </div>
+            <div className="w-full lg:w-72">
+              <Input
+                type="date"
+                value={selectedDate}
+                onChange={(event) => {
+                  setExpandedId(null);
+                  setSelectedDate(event.target.value);
+                }}
+                icon={<CalendarIcon className="h-4 w-4" />}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {availableDates.slice(0, 8).map((date) => (
+              <button
+                key={date}
+                type="button"
+                onClick={() => {
+                  setExpandedId(null);
+                  setSelectedDate(date);
+                }}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                  selectedDate === date
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {formatRecordDate(date)}
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {isLoading ? (
         <Card className="p-10 text-center">
           <FileTextIcon className="mx-auto mb-3 h-8 w-8 text-slate-300" />
           <h2 className="text-lg font-semibold text-slate-900">Loading medical history</h2>
           <p className="mt-1 text-sm text-slate-500">Fetching your completed records.</p>
         </Card>
-      ) : orderedRecords.length > 0 ? (
+      ) : filteredRecords.length > 0 ? (
         <div className="relative ml-4 space-y-8 border-l-2 border-blue-100 py-4 pl-6">
-          {orderedRecords.map((record, index) => (
+          {filteredRecords.map((record, index) => (
             <motion.div
               key={record._id}
               initial={{ opacity: 0, x: -20 }}
@@ -226,8 +300,14 @@ export const MedicalHistory = () => {
       ) : (
         <Card className="p-10 text-center">
           <FileTextIcon className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-          <h2 className="text-lg font-semibold text-slate-900">No medical history yet</h2>
-          <p className="mt-1 text-sm text-slate-500">Completed consultation records will appear here.</p>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {orderedRecords.length > 0 ? 'No records for selected day' : 'No medical history yet'}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {orderedRecords.length > 0
+              ? 'Choose another day to view consultation notes, diagnoses, and prescriptions.'
+              : 'Completed consultation records will appear here.'}
+          </p>
         </Card>
       )}
     </div>

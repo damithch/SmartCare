@@ -127,8 +127,8 @@ const billSchema = new mongoose.Schema(
   }
 );
 
-// Pre-save hook to auto-generate bill number
-billSchema.pre("save", async function (next) {
+// Generate bill number before validation so the required field is present.
+billSchema.pre("validate", async function (next) {
   if (!this.billNumber) {
     const count = await mongoose.model("Bill").countDocuments();
     const year = new Date().getFullYear();

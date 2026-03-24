@@ -23,6 +23,7 @@ import {
   fetchAppointmentMedicalRecord,
   fetchMedicines,
   fetchMyAppointments,
+  fetchPatientUpcomingAppointments,
   fetchPatientMedicalRecords,
   fetchUserById,
   saveConsultation
@@ -80,6 +81,12 @@ const formatJoinedDate = (value) => {
   return date.toLocaleDateString();
 };
 
+const getDateKey = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().split('T')[0];
+};
+
 const getPatientDisplayName = (profile, appointment) => profile?.fullName || appointment?.patient?.fullName || 'Patient';
 const getPatientEmail = (profile, appointment) => profile?.email || appointment?.patient?.email || 'No email';
 const getPatientPhone = (profile, appointment) => profile?.phone || appointment?.patient?.phone || 'Not provided';
@@ -92,11 +99,13 @@ export const ConsultationPage = () => {
   const [selectedPatientProfile, setSelectedPatientProfile] = useState(null);
   const [form, setForm] = useState(normalizeRecordToForm(null));
   const [historyRecords, setHistoryRecords] = useState([]);
+  const [upcomingPatientAppointments, setUpcomingPatientAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedHistoryDate, setSelectedHistoryDate] = useState('');
 
   useEffect(() => {
     if (!user || !token) return;
@@ -110,7 +119,7 @@ export const ConsultationPage = () => {
         const [appointmentData, medicineData] = await Promise.all([fetchMyAppointments(token), fetchMedicines(token)]);
         if (!isMounted) return;
 
-        const nextAppointments = Array.isArray(appointmentData) ? appointmentData.filter((appointment) => !['cancelled', 'rejected'].includes(appointment.status)) : [];
+        const nextAppointments = Array.isArray(appointmentData) ? appointmentData.filter((appointment) => appointment.status === 'approved') : [];
         setAppointments(nextAppointments);
         setMedicines(Array.isArray(medicineData) ? medicineData : []);
         if (nextAppointments.length > 0) {
@@ -148,13 +157,20 @@ export const ConsultationPage = () => {
           fetchAppointmentMedicalRecord(token, selectedAppointment._id),
           fetchUserById(token, selectedAppointment.patient?._id)
         ]);
+        const upcomingAppointments = await fetchPatientUpcomingAppointments(token, selectedAppointment.patient?._id);
 
         if (!isMounted) return;
 
         const records = Array.isArray(patientRecords) ? patientRecords : [];
         setHistoryRecords(records.filter((record) => record.appointment?._id !== selectedAppointment._id));
+        setUpcomingPatientAppointments(
+          (Array.isArray(upcomingAppointments) ? upcomingAppointments : []).filter(
+            (appointment) => appointment._id !== selectedAppointment._id
+          )
+        );
         setForm(normalizeRecordToForm(consultationRecord));
         setSelectedPatientProfile(patientProfile);
+        setSelectedHistoryDate('');
       } catch (err) {
         if (isMounted) setError(err.message || 'Failed to load patient profile');
       }
@@ -182,6 +198,22 @@ export const ConsultationPage = () => {
     [medicines]
   );
 
+  const historyDates = useMemo(
+    () => [...new Set(historyRecords.map((record) => getDateKey(record.createdAt)).filter(Boolean))],
+    [historyRecords]
+  );
+
+  useEffect(() => {
+    if (!selectedHistoryDate && historyDates.length > 0) {
+      setSelectedHistoryDate(historyDates[0]);
+    }
+  }, [historyDates, selectedHistoryDate]);
+
+  const filteredHistoryRecords = useMemo(() => {
+    if (!selectedHistoryDate) return historyRecords;
+    return historyRecords.filter((record) => getDateKey(record.createdAt) === selectedHistoryDate);
+  }, [historyRecords, selectedHistoryDate]);
+
   if (!user) return null;
 
   const updateForm = (key, value) => setForm((current) => ({ ...current, [key]: value }));
@@ -208,14 +240,20 @@ export const ConsultationPage = () => {
         visitReason: form.visitReason,
         symptoms: form.symptoms,
         vitals: form.vitals,
-        diagnoses: form.diagnoses.map(({ title, description, additionalNotes }) => ({ title, description, additionalNotes })),
-        prescriptions: form.prescriptions.filter((prescription) => prescription.medicineName && prescription.dosage && prescription.frequency && prescription.duration).map(({ medicineName, dosage, frequency, duration, instructions }) => ({ medicineName, dosage, frequency, duration, instructions })),
+        diagnoses: form.diagnoses.map(({ id, title, description, additionalNotes }) => ({ id, title, description, additionalNotes })),
+        prescriptions: form.prescriptions
+          .filter((prescription) => prescription.medicineName && prescription.dosage && prescription.frequency && prescription.duration)
+          .map(({ id, medicineName, dosage, frequency, duration, instructions }) => ({ id, medicineName, dosage, frequency, duration, instructions })),
         notes: form.notes,
         followUpRequired: form.followUpRequired,
         followUpDate: form.followUpRequired && form.followUpDate ? form.followUpDate : undefined
       });
 
-      setAppointments((current) => current.map((appointment) => appointment._id === selectedAppointment._id ? { ...appointment, status: 'completed' } : appointment));
+      setAppointments((current) => {
+        const remainingAppointments = current.filter((appointment) => appointment._id !== selectedAppointment._id);
+        setSelectedAppointmentId(remainingAppointments[0]?._id || '');
+        return remainingAppointments;
+      });
       setSuccessMessage('Consultation saved and appointment marked as completed.');
     } catch (err) {
       setError(err.message || 'Failed to save consultation');
@@ -306,6 +344,26 @@ export const ConsultationPage = () => {
                   <div className="absolute left-6 top-6 flex items-center gap-2 rounded-full bg-white/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-sm">
                     <SparklesIcon className="h-3.5 w-3.5" /> Patient Profile
                   </div>
+                  <div className="absolute right-6 top-6">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-white/30 bg-white/15 text-white backdrop-blur-sm hover:bg-white/25"
+                      onClick={() => {
+                        setSelectedAppointmentId('');
+                        setSelectedPatientProfile(null);
+                        setHistoryRecords([]);
+                        setUpcomingPatientAppointments([]);
+                        setSelectedHistoryDate('');
+                        setForm(normalizeRecordToForm(null));
+                        setSuccessMessage('');
+                        setError('');
+                      }}
+                    >
+                      Close
+                    </Button>
+                  </div>
                   <div className="absolute bottom-6 right-6">
                     <Badge variant={selectedAppointment.status === 'completed' ? 'success' : 'warning'} className="capitalize border border-white/30 bg-white/90 text-slate-800 shadow-sm">
                       {selectedAppointment.status}
@@ -383,7 +441,10 @@ export const ConsultationPage = () => {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <Card className="p-6">
-                  <h2 className="mb-4 text-lg font-semibold text-slate-900">Consultation Notes</h2>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h2 className="text-lg font-semibold text-slate-900">Consultation Notes</h2>
+                    <Button type="submit" size="sm" isLoading={isSaving}>Save Notes</Button>
+                  </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <Input label="Visit Reason" value={form.visitReason} onChange={(event) => updateForm('visitReason', event.target.value)} required />
                     <Input label="Symptoms" value={form.symptoms} onChange={(event) => updateForm('symptoms', event.target.value)} required />
@@ -407,7 +468,10 @@ export const ConsultationPage = () => {
                 <Card className="p-6">
                   <div className="mb-4 flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-slate-900">Diagnoses</h2>
-                    <Button type="button" variant="outline" size="sm" onClick={addDiagnosis}><PlusIcon className="mr-2 h-4 w-4" /> Add Diagnosis</Button>
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={addDiagnosis}><PlusIcon className="mr-2 h-4 w-4" /> Add Diagnosis</Button>
+                      <Button type="submit" size="sm" isLoading={isSaving}>Save Diagnoses</Button>
+                    </div>
                   </div>
                   <div className="space-y-4">
                     {form.diagnoses.map((diagnosis) => (
@@ -429,7 +493,10 @@ export const ConsultationPage = () => {
                 <Card className="p-6">
                   <div className="mb-4 flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-slate-900">Prescriptions</h2>
-                    <Button type="button" variant="outline" size="sm" onClick={addPrescription}><PlusIcon className="mr-2 h-4 w-4" /> Add Medicine</Button>
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={addPrescription}><PlusIcon className="mr-2 h-4 w-4" /> Add Medicine</Button>
+                      <Button type="submit" size="sm" isLoading={isSaving}>Save Prescriptions</Button>
+                    </div>
                   </div>
                   <div className="space-y-4">
                     {form.prescriptions.map((prescription) => (
@@ -497,16 +564,120 @@ export const ConsultationPage = () => {
             <h3 className="mb-4 flex items-center font-semibold text-slate-900"><FileTextIcon className="mr-2 h-4 w-4 text-blue-600" /> Previous Visits</h3>
             {historyRecords.length > 0 ? (
               <div className="space-y-4">
-                {historyRecords.map((record) => (
+                <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <CalendarIcon className="h-4 w-4 text-blue-600" />
+                    Select visit day
+                  </div>
+                  <Input
+                    type="date"
+                    value={selectedHistoryDate}
+                    onChange={(event) => setSelectedHistoryDate(event.target.value)}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {historyDates.slice(0, 6).map((date) => (
+                      <button
+                        key={date}
+                        type="button"
+                        onClick={() => setSelectedHistoryDate(date)}
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          selectedHistoryDate === date
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {new Date(date).toLocaleDateString()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {filteredHistoryRecords.map((record) => (
                   <div key={record._id} className="border-l-2 border-slate-200 pl-4 py-1">
                     <p className="text-xs font-bold uppercase text-slate-500">{new Date(record.createdAt).toLocaleDateString()}</p>
                     <p className="mt-1 text-sm font-medium text-slate-900">{record.visitReason}</p>
-                    <p className="mt-1 line-clamp-3 text-xs text-slate-500">{record.notes || record.symptoms}</p>
-                    {record.diagnoses?.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{record.diagnoses.slice(0, 2).map((diagnosis) => <Badge key={diagnosis._id || diagnosis.title} variant="info">{diagnosis.title}</Badge>)}</div>}
+                    <div className="mt-3 space-y-3 rounded-2xl border border-slate-100 bg-white p-4">
+                      <div>
+                        <p className="text-xs font-bold uppercase text-slate-500">Patient Data</p>
+                        <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <div className="rounded-xl bg-slate-50 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Patient</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900">{record.patient?.fullName || selectedAppointment?.patient?.fullName || 'Patient'}</p>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Doctor</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900">{record.doctor?.fullName || 'Doctor'}</p>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Email</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900">{record.patient?.email || selectedAppointment?.patient?.email || 'No email'}</p>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Phone</p>
+                            <p className="mt-1 text-sm font-medium text-slate-900">{record.patient?.phone || 'Not provided'}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase text-slate-500">Consultation Notes</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-600">{record.notes || record.symptoms || 'No notes recorded.'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase text-slate-500">Diagnoses</p>
+                        {record.diagnoses?.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {record.diagnoses.map((diagnosis) => (
+                              <Badge key={diagnosis._id || diagnosis.title} variant="info">{diagnosis.title}</Badge>
+                            ))}
+                          </div>
+                        ) : <p className="mt-1 text-xs text-slate-500">No diagnoses recorded.</p>}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase text-slate-500">Prescriptions</p>
+                        {record.prescriptions?.length > 0 ? (
+                          <div className="mt-2 space-y-1">
+                            {record.prescriptions.map((prescription, index) => (
+                              <p key={`${record._id}-rx-${index}`} className="text-xs text-slate-600">
+                                {prescription.medicineName} | {prescription.dosage} | {prescription.frequency} | {prescription.duration}
+                              </p>
+                            ))}
+                          </div>
+                        ) : <p className="mt-1 text-xs text-slate-500">No prescriptions recorded.</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {filteredHistoryRecords.length === 0 && (
+                  <p className="text-sm text-slate-500">No visit records found for the selected day.</p>
+                )}
+              </div>
+            ) : <p className="text-sm text-slate-500">No previous medical records found for this patient.</p>}
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="mb-4 flex items-center font-semibold text-slate-900"><CalendarIcon className="mr-2 h-4 w-4 text-blue-600" /> Next Bookings</h3>
+            {upcomingPatientAppointments.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingPatientAppointments.map((appointment) => (
+                  <div key={appointment._id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{appointment.doctor?.fullName || 'Doctor'}</p>
+                        <p className="mt-1 text-xs text-slate-500">{appointment.doctor?.specialization || 'General Practice'}</p>
+                      </div>
+                      <Badge variant={appointment.status === 'approved' ? 'success' : 'warning'} className="capitalize">
+                        {appointment.status}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 space-y-1 text-xs text-slate-600">
+                      <p><span className="font-semibold text-slate-800">Date:</span> {formatAppointmentDate(appointment.appointmentDate)}</p>
+                      <p><span className="font-semibold text-slate-800">Doctor Email:</span> {appointment.doctor?.email || 'No email'}</p>
+                      <p><span className="font-semibold text-slate-800">Payment:</span> {appointment.paymentStatus || 'pending'}</p>
+                    </div>
                   </div>
                 ))}
               </div>
-            ) : <p className="text-sm text-slate-500">No previous medical records found for this patient.</p>}
+            ) : <p className="text-sm text-slate-500">No future bookings found for this patient.</p>}
           </Card>
 
           <Card className="p-6">

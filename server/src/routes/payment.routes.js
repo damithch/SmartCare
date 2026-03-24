@@ -13,7 +13,7 @@ router.use(protect);
 // POST /payments - Process payment (billing staff, receptionist, admin)
 router.post(
   "/",
-  authorize(ROLES.BILLING_STAFF, ROLES.RECEPTIONIST, ROLES.ADMIN, ROLES.SYSTEM_ADMIN),
+  authorize(ROLES.BILLING_STAFF, ROLES.RECEPTIONIST, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.PATIENT),
   validate(paymentValidation.processPaymentSchema, "body"),
   paymentController.processPayment
 );

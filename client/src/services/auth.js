@@ -60,6 +60,10 @@ export const deleteMyAvailability = (token, id) =>
 
 export const fetchMyAppointments = (token) =>
   authenticatedRequest("/appointments/my?limit=100&sortBy=appointmentDate&sortOrder=asc", token, { method: "GET" });
+export const fetchPatientUpcomingAppointments = (token, patientId) =>
+  patientId
+    ? authenticatedRequest(`/appointments/patient/${encodeURIComponent(patientId)}/upcoming`, token, { method: "GET" })
+    : Promise.resolve([]);
 export const updateAppointment = (token, id, body) =>
   authenticatedRequest(`/appointments/${encodeURIComponent(id)}`, token, { method: "PATCH", body: JSON.stringify(body) });
 export const cancelAppointment = (token, id) =>
@@ -88,7 +92,25 @@ export const fetchLowStockMedicines = (token) =>
   authenticatedRequest("/medicines/inventory/low-stock", token, { method: "GET" });
 export const addMedicine = (token, body) =>
   authenticatedRequest("/medicines", token, { method: "POST", body: JSON.stringify(body) });
+export const fetchPrescriptionQueue = (token, status = "", search = "") =>
+  authenticatedRequest(
+    `/medical-records/prescriptions/queue?limit=100${status ? `&status=${encodeURIComponent(status)}` : ""}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
+    token,
+    { method: "GET" }
+  );
+export const updatePrescriptionQueueStatus = (token, recordId, prescriptionId, status) =>
+  authenticatedRequest(
+    `/medical-records/${encodeURIComponent(recordId)}/prescriptions/${encodeURIComponent(prescriptionId)}/status`,
+    token,
+    { method: "PATCH", body: JSON.stringify({ status }) }
+  );
+export const fetchMyBills = (token, status = "") =>
+  authenticatedRequest(`/bills?limit=100&sortBy=createdAt&sortOrder=desc${status ? `&status=${encodeURIComponent(status)}` : ""}`, token, { method: "GET" });
+export const payBill = (token, body) =>
+  authenticatedRequest("/payments", token, { method: "POST", body: JSON.stringify(body) });
 
+export const fetchMyMedicalRecords = (token) =>
+  authenticatedRequest("/medical-records/my?limit=20&sortBy=createdAt&sortOrder=desc", token, { method: "GET" });
 export const fetchPatientMedicalRecords = (token, patientId) =>
   patientId
     ? authenticatedRequest(`/medical-records/patient/${encodeURIComponent(patientId)}?limit=20&sortBy=createdAt&sortOrder=desc`, token, { method: "GET" })

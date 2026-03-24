@@ -54,6 +54,7 @@ export const validateConsultationPayload = Joi.object({
   }).optional(),
   diagnoses: Joi.array().items(
     Joi.object({
+      id: Joi.string().allow("").optional(),
       title: Joi.string().max(200).required(),
       description: Joi.string().max(1000).required(),
       additionalNotes: Joi.string().max(500).allow("").optional()
@@ -61,6 +62,7 @@ export const validateConsultationPayload = Joi.object({
   ).min(1).required(),
   prescriptions: Joi.array().items(
     Joi.object({
+      id: Joi.string().allow("").optional(),
       medicineName: Joi.string().max(200).required(),
       dosage: Joi.string().max(100).required(),
       frequency: Joi.string()
@@ -184,4 +186,31 @@ export const validatePatientMedicalRecordParam = Joi.object({
     "string.pattern.base": "Invalid patient ID format",
     "string.empty": "Patient ID is required"
   })
+});
+
+export const validateMedicalRecordPrescriptionParam = Joi.object({
+  id: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid medical record ID format",
+      "string.empty": "Medical record ID is required"
+    }),
+  prescriptionId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid prescription ID format",
+      "string.empty": "Prescription ID is required"
+    })
+});
+
+export const validatePrescriptionQueueQuery = Joi.object({
+  status: Joi.string().valid("pending", "processing", "dispensed", "unavailable").optional(),
+  search: Joi.string().allow("").optional(),
+  limit: Joi.number().min(1).max(200).optional()
+});
+
+export const validatePrescriptionStatusUpdate = Joi.object({
+  status: Joi.string().valid("pending", "processing", "dispensed", "unavailable").required()
 });

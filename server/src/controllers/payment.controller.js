@@ -6,11 +6,11 @@ import { ROLES } from "../constants/roles.js";
 // Process payment
 export const processPayment = asyncHandler(async (req, res) => {
   // Only billing staff, receptionist, and admin can process payments
-  if (![ROLES.BILLING_STAFF, ROLES.RECEPTIONIST, ROLES.ADMIN, ROLES.SYSTEM_ADMIN].includes(req.user.role)) {
-    throw new AppError("Only billing staff can process payments", 403, "FORBIDDEN");
+  if (![ROLES.BILLING_STAFF, ROLES.RECEPTIONIST, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.PATIENT].includes(req.user.role)) {
+    throw new AppError("Only authorized users can process payments", 403, "FORBIDDEN");
   }
 
-  const payment = await paymentService.processPayment(req.body, req.user._id);
+  const payment = await paymentService.processPayment(req.body, req.user._id, req.user.role);
 
   return res.status(201).json({
     success: true,
@@ -28,10 +28,10 @@ export const getAllPayments = asyncHandler(async (req, res) => {
 
   // Patients can only see their own payments
   if (req.user.role === ROLES.PATIENT) {
-    req.body.patient = req.user._id;
+    req.query.patient = req.user._id.toString();
   }
 
-  const result = await paymentService.getAllPayments(req.body);
+  const result = await paymentService.getAllPayments(req.query);
 
   return res.status(200).json({
     success: true,
@@ -96,7 +96,7 @@ export const getUnreconciledPayments = asyncHandler(async (req, res) => {
     throw new AppError("Unauthorized to view unreconciled payments", 403, "FORBIDDEN");
   }
 
-  const result = await paymentService.getUnreconciledPayments(req.body);
+  const result = await paymentService.getUnreconciledPayments(req.query);
 
   return res.status(200).json({
     success: true,
@@ -167,7 +167,7 @@ export const getPaymentReport = asyncHandler(async (req, res) => {
     throw new AppError("Unauthorized to generate reports", 403, "FORBIDDEN");
   }
 
-  const report = await paymentService.getPaymentReport(req.body);
+  const report = await paymentService.getPaymentReport(req.query);
 
   return res.status(200).json({
     success: true,
