@@ -4,9 +4,7 @@ import mongoose from "mongoose";
 const receiptSchema = new mongoose.Schema({
   receiptNumber: {
     type: String,
-    unique: true,
     required: true,
-    index: true,
   },
   generatedAt: {
     type: Date,
@@ -154,6 +152,7 @@ paymentSchema.pre("save", async function (next) {
 
 // Index for finding payments by patient and date
 paymentSchema.index({ patient: 1, createdAt: -1 });
+paymentSchema.index({ "receipt.receiptNumber": 1 }, { unique: true, sparse: true });
 
 const Payment = mongoose.model("Payment", paymentSchema);
 export default Payment;
