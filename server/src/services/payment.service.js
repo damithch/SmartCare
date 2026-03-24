@@ -19,9 +19,19 @@ export const processPayment = async (paymentData, processedBy, processedByRole) 
     throw new AppError("Patients can only pay their own bills", 403, "FORBIDDEN");
   }
 
+  if (bill.status === "cancelled") {
+    throw new AppError("Cancelled bills cannot be paid", 400, "BILL_PAYMENT_NOT_ALLOWED");
+  }
+
+  if (bill.status === "paid" || bill.amountDue <= 0) {
+    throw new AppError("This bill has already been paid", 409, "BILL_ALREADY_PAID");
+  }
+
+  const originalAmountDue = bill.amountDue;
+
   // Validate amount doesn't exceed bill amount
-  if (amount > bill.amountDue) {
-    throw new AppError(`Payment amount cannot exceed due amount of ${bill.amountDue}`, 400, "INVALID_PAYMENT_AMOUNT");
+  if (amount > originalAmountDue) {
+    throw new AppError(`Payment amount cannot exceed due amount of ${originalAmountDue}`, 400, "INVALID_PAYMENT_AMOUNT");
   }
 
   const payment = new Payment({
@@ -42,18 +52,20 @@ export const processPayment = async (paymentData, processedBy, processedByRole) 
   await payment.save();
 
   // Update bill status
-  const remainingBalance = bill.amountDue - amount;
+  const remainingBalance = Math.max(0, originalAmountDue - amount);
+  bill.amountDue = remainingBalance;
   if (remainingBalance === 0) {
     bill.status = "paid";
-  } else if (remainingBalance < bill.amountDue) {
+  } else if (remainingBalance < originalAmountDue) {
     bill.status = "partial";
   }
   await bill.save();
 
-  return payment
-    .populate("bill")
-    .populate("patient", "fullName email phone")
-    .populate("processedBy", "fullName email");
+  return payment.populate([
+    { path: "bill" },
+    { path: "patient", select: "fullName email phone" },
+    { path: "processedBy", select: "fullName email" },
+  ]);
 };
 
 // 2. Get payment by ID
@@ -248,7 +260,11 @@ export const requestRefund = async (refundData, requestedBy) => {
 
   await refund.save();
 
-  return refund.populate("payment").populate("bill").populate("patient", "fullName email");
+  return refund.populate([
+    { path: "payment" },
+    { path: "bill" },
+    { path: "patient", select: "fullName email" },
+  ]);
 };
 
 // 8. Approve/Decline refund
@@ -270,7 +286,11 @@ export const approveRefund = async (refundId, approved, approvedBy, rejectionRea
   refund.notes = notes;
   await refund.save();
 
-  return refund.populate("payment").populate("bill").populate("patient", "fullName email");
+  return refund.populate([
+    { path: "payment" },
+    { path: "bill" },
+    { path: "patient", select: "fullName email" },
+  ]);
 };
 
 // 9. Process refund
@@ -307,7 +327,11 @@ export const processRefund = async (refundId, processedBy) => {
     await bill.save();
   }
 
-  return refund.populate("payment").populate("bill").populate("patient", "fullName email");
+  return refund.populate([
+    { path: "payment" },
+    { path: "bill" },
+    { path: "patient", select: "fullName email" },
+  ]);
 };
 
 // 10. Get payment/reconciliation report
