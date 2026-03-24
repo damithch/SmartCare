@@ -4,6 +4,7 @@ import {
   LayoutDashboardIcon,
   CalendarIcon,
   ClockIcon,
+  CheckCircle2Icon,
   FileTextIcon,
   UserIcon,
   LogOutIcon,
@@ -66,6 +67,12 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
     icon: LayoutDashboardIcon,
     page: 'doctor-dashboard',
     section: 'MAIN MENU'
+  },
+  {
+    name: 'Approvals',
+    icon: CheckCircle2Icon,
+    page: 'approvals',
+    section: 'MANAGEMENT'
   },
   {
     name: 'Appointment Management',

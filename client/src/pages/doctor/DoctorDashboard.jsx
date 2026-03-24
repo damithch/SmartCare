@@ -13,7 +13,7 @@ import {
   CheckCircle2Icon
 } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
-import { fetchMyAppointments, fetchMyAvailability } from '../../services/auth';
+import { fetchMyAppointments, fetchMyAvailability, updateAppointment } from '../../services/auth';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -90,6 +90,7 @@ export const DoctorDashboard = () => {
   const [appointments, setAppointments] = useState([]);
   const [todaySlots, setTodaySlots] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeAppointmentId, setActiveAppointmentId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -300,6 +301,26 @@ export const DoctorDashboard = () => {
     show: { opacity: 1, y: 0 }
   };
 
+  const updateAppointmentState = async (appointmentId, nextStatus) => {
+    if (!token) {
+      return;
+    }
+
+    setActiveAppointmentId(appointmentId);
+    setError('');
+
+    try {
+      const updatedAppointment = await updateAppointment(token, appointmentId, { status: nextStatus });
+      setAppointments((current) =>
+        current.map((appointment) => (appointment._id === appointmentId ? updatedAppointment : appointment))
+      );
+    } catch (err) {
+      setError(err.message || 'Failed to update appointment');
+    } finally {
+      setActiveAppointmentId('');
+    }
+  };
+
   if (!user) {
     return null;
   }
@@ -403,7 +424,26 @@ export const DoctorDashboard = () => {
                             <Badge variant={appointment.status === 'approved' ? 'success' : appointment.status === 'pending' ? 'warning' : appointment.status === 'completed' ? 'info' : ['rejected', 'cancelled'].includes(appointment.status) ? 'danger' : 'default'} className="capitalize font-semibold">
                               {appointment.status}
                             </Badge>
-                            {appointment.status === 'approved' ? (
+                            {appointment.status === 'pending' ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  isLoading={activeAppointmentId === appointment._id}
+                                  onClick={() => updateAppointmentState(appointment._id, 'approved')}
+                                  className={isNext ? 'shadow-md shadow-blue-500/20' : ''}
+                                >
+                                  Accept
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  isLoading={activeAppointmentId === appointment._id}
+                                  onClick={() => updateAppointmentState(appointment._id, 'rejected')}
+                                >
+                                  Reject
+                                </Button>
+                              </>
+                            ) : appointment.status === 'approved' ? (
                               <Button size="sm" onClick={() => navigate('consultations')} className={isNext ? 'shadow-md shadow-blue-500/20' : ''}>
                                 Start
                               </Button>

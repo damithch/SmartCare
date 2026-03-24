@@ -4,6 +4,7 @@ import {
   LayoutDashboardIcon,
   CalendarIcon,
   ClockIcon,
+  CheckCircle2Icon,
   FileTextIcon,
   PillIcon,
   PackageIcon,
@@ -48,6 +49,11 @@ export const NavBar = () => {
     name: 'Dashboard',
     icon: LayoutDashboardIcon,
     page: 'doctor-dashboard'
+  },
+  {
+    name: 'Approvals',
+    icon: CheckCircle2Icon,
+    page: 'approvals'
   },
   {
     name: 'Appointment Management',

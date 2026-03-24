@@ -9,7 +9,6 @@ import {
   ChevronUpIcon } from
 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
-import { mockPrescriptions } from '../../data/mockData';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -23,9 +22,10 @@ export const PrescriptionQueue = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRx, setSelectedRx] = useState(null);
   const [isDispensing, setIsDispensing] = useState(false);
+  const prescriptions = [];
   if (!user) return null;
   const tabs = ['Pending', 'Processing', 'Dispensed'];
-  const filteredPrescriptions = mockPrescriptions.filter((rx) => {
+  const filteredPrescriptions = prescriptions.filter((rx) => {
     const matchesTab = rx.status.toLowerCase() === activeTab.toLowerCase();
     const matchesSearch =
     rx.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -235,7 +235,7 @@ export const PrescriptionQueue = () => {
             </motion.div>
         ) :
 
-        <Card className="p-12 text-center border-dashed">
+          <Card className="p-12 text-center border-dashed">
             <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
               <PillIcon className="w-8 h-8 text-slate-400" />
             </div>
@@ -243,8 +243,8 @@ export const PrescriptionQueue = () => {
               No prescriptions found
             </h3>
             <p className="text-slate-500 mt-1">
-              There are no {activeTab.toLowerCase()} prescriptions matching your
-              criteria.
+              Live prescription queue data is not connected yet, so no hardcoded
+              records are shown here.
             </p>
           </Card>
         }

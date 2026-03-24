@@ -22,6 +22,7 @@ import { DoctorDashboard } from './pages/doctor/DoctorDashboard';
 import { MySchedule } from './pages/doctor/MySchedule';
 import { AvailabilityManager } from './pages/doctor/AvailabilityManager';
 import { ConsultationPage } from './pages/doctor/ConsultationPage';
+import { AppointmentRequests } from './pages/doctor/AppointmentRequests';
 import { PharmacistDashboard } from './pages/pharmacist/PharmacistDashboard';
 import { PrescriptionQueue } from './pages/pharmacist/PrescriptionQueue';
 import { InventoryPage } from './pages/pharmacist/InventoryPage';
@@ -51,6 +52,7 @@ const pageComponents = {
   'my-appointments': MyAppointments,
   'medical-history': MedicalHistory,
   'doctor-dashboard': DoctorDashboard,
+  approvals: AppointmentRequests,
   'my-schedule': MySchedule,
   availability: AvailabilityManager,
   consultations: ConsultationPage,

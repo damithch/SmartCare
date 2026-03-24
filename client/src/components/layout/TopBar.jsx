@@ -11,7 +11,6 @@ import {
 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { Avatar } from '../ui/Avatar';
-import { mockNotifications } from '../../data/mockData';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const TopBar = ({ toggleSidebar }) => {
@@ -29,6 +28,7 @@ export const TopBar = ({ toggleSidebar }) => {
       'my-appointments': 'My Appointments',
       'medical-history': 'Medical History',
       'doctor-dashboard': 'Doctor Dashboard',
+      approvals: 'Appointment Requests',
       'my-schedule': 'Appointment Management',
       availability: 'Availability Manager',
       consultations: 'Consultations',
@@ -39,12 +39,8 @@ export const TopBar = ({ toggleSidebar }) => {
     };
     return titles[currentPage] || 'Dashboard';
   };
-  const unreadCount = mockNotifications.filter(
-    (n) => !n.isRead && n.userId === user.id
-  ).length;
-  const userNotifications = mockNotifications.filter(
-    (n) => n.userId === user.id
-  );
+  const unreadCount = 0;
+  const userNotifications = [];
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'appointment':
