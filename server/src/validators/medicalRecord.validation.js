@@ -178,3 +178,10 @@ export const validateAppointmentMedicalRecordParam = Joi.object({
     "string.empty": "Appointment ID is required"
   })
 });
+
+export const validatePatientMedicalRecordParam = Joi.object({
+  patientId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
+    "string.pattern.base": "Invalid patient ID format",
+    "string.empty": "Patient ID is required"
+  })
+});

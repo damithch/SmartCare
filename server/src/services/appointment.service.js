@@ -9,6 +9,29 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-02-24.acacia" })
   : null;
 
+const APPOINTMENT_STATUS = {
+  PENDING: "pending",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled"
+};
+
+const releaseAppointmentSlotCapacity = async (appointment) => {
+  if (!appointment?.availabilitySlot) {
+    return;
+  }
+
+  const slot = await DoctorAvailability.findById(appointment.availabilitySlot);
+  if (!slot) {
+    return;
+  }
+
+  slot.bookedCount = Math.max((slot.bookedCount || 0) - 1, 0);
+  slot.isBooked = slot.bookedCount >= (slot.maxPatients || 1);
+  await slot.save();
+};
+
 const ensureStripe = () => {
   if (!stripe) {
     throw new AppError("Stripe is not configured on the server", 500, "STRIPE_NOT_CONFIGURED");
@@ -235,7 +258,7 @@ export const createAppointment = async (
     const duplicateAppointment = await Appointment.findOne({
       patient: patientId,
       availabilitySlot: context.slot._id,
-      status: { $ne: "cancelled" }
+      status: { $nin: [APPOINTMENT_STATUS.CANCELLED, APPOINTMENT_STATUS.REJECTED] }
     });
 
     if (duplicateAppointment) {
@@ -252,7 +275,7 @@ export const createAppointment = async (
     doctor: doctorId,
     availabilitySlot: context.slot?._id,
     appointmentDate: context.appointmentDate,
-    status: "scheduled",
+    status: APPOINTMENT_STATUS.PENDING,
     paymentStatus: paymentData.paymentStatus || "pending",
     paymentIntentId: paymentData.paymentIntentId,
     amountPaid: paymentData.amountPaid ?? 0,
@@ -374,10 +397,56 @@ export const updateAppointment = async (appointmentId, { appointmentDate, status
   }
 
   if (appointmentDate !== undefined) {
+    if (!isDoctor && !isAdmin) {
+      throw new AppError("Only doctors or admins can reschedule appointments", 403, "FORBIDDEN");
+    }
+
+    if (appointment.status === APPOINTMENT_STATUS.CANCELLED || appointment.status === APPOINTMENT_STATUS.COMPLETED) {
+      throw new AppError("Only pending or approved appointments can be rescheduled", 400, "INVALID_STATUS_CHANGE");
+    }
+
     appointment.appointmentDate = appointmentDate;
   }
 
   if (status !== undefined) {
+    if (
+      [APPOINTMENT_STATUS.CANCELLED, APPOINTMENT_STATUS.REJECTED].includes(appointment.status) &&
+      status !== appointment.status
+    ) {
+      throw new AppError("Cancelled or rejected appointments cannot be changed", 400, "INVALID_STATUS_CHANGE");
+    }
+
+    if (appointment.status === APPOINTMENT_STATUS.COMPLETED && status !== APPOINTMENT_STATUS.COMPLETED) {
+      throw new AppError("Completed appointments cannot be changed", 400, "INVALID_STATUS_CHANGE");
+    }
+
+    if (isPatient) {
+      throw new AppError("Patients cannot directly change appointment status", 403, "FORBIDDEN");
+    }
+
+    if (isDoctor) {
+      const allowedDoctorTransitions = {
+        [APPOINTMENT_STATUS.PENDING]: [APPOINTMENT_STATUS.APPROVED, APPOINTMENT_STATUS.REJECTED],
+        [APPOINTMENT_STATUS.APPROVED]: [APPOINTMENT_STATUS.COMPLETED, APPOINTMENT_STATUS.REJECTED],
+        [APPOINTMENT_STATUS.REJECTED]: [],
+        [APPOINTMENT_STATUS.COMPLETED]: [],
+        [APPOINTMENT_STATUS.CANCELLED]: []
+      };
+
+      const allowedStatuses = allowedDoctorTransitions[appointment.status] || [];
+
+      if (!allowedStatuses.includes(status) && status !== appointment.status) {
+        throw new AppError("Doctors can only accept pending appointments or reject pending/approved appointments", 400, "INVALID_STATUS_CHANGE");
+      }
+    }
+
+    if (
+      status === APPOINTMENT_STATUS.REJECTED &&
+      [APPOINTMENT_STATUS.PENDING, APPOINTMENT_STATUS.APPROVED].includes(appointment.status)
+    ) {
+      await releaseAppointmentSlotCapacity(appointment);
+    }
+
     appointment.status = status;
   }
 
@@ -392,11 +461,15 @@ export const cancelAppointment = async (appointmentId, userId, userRole) => {
     throw new AppError("Appointment not found", 404, "APPOINTMENT_NOT_FOUND");
   }
 
-  if (appointment.status === "cancelled") {
+  if (appointment.status === APPOINTMENT_STATUS.CANCELLED) {
     throw new AppError("Appointment is already cancelled", 400, "ALREADY_CANCELLED");
   }
 
-  if (appointment.status === "completed") {
+  if (appointment.status === APPOINTMENT_STATUS.REJECTED) {
+    throw new AppError("Rejected appointments cannot be cancelled", 400, "INVALID_STATUS_CHANGE");
+  }
+
+  if (appointment.status === APPOINTMENT_STATUS.COMPLETED) {
     throw new AppError("Cannot cancel a completed appointment", 400, "CANNOT_CANCEL_COMPLETED");
   }
 
@@ -408,17 +481,10 @@ export const cancelAppointment = async (appointmentId, userId, userRole) => {
     throw new AppError("Not authorized to cancel this appointment", 403, "FORBIDDEN");
   }
 
-  appointment.status = "cancelled";
+  appointment.status = APPOINTMENT_STATUS.CANCELLED;
   await appointment.save();
 
-  if (appointment.availabilitySlot) {
-    const slot = await DoctorAvailability.findById(appointment.availabilitySlot);
-    if (slot) {
-      slot.bookedCount = Math.max((slot.bookedCount || 0) - 1, 0);
-      slot.isBooked = slot.bookedCount >= (slot.maxPatients || 1);
-      await slot.save();
-    }
-  }
+  await releaseAppointmentSlotCapacity(appointment);
 
   return populateAppointmentById(appointmentId);
 };

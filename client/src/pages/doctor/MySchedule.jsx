@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
 import { useAppContext } from '../../context/AppContext';
-import { fetchMyAppointments } from '../../services/auth';
+import { fetchMyAppointments, updateAppointment } from '../../services/auth';
 
 const startOfWeek = (date) => {
   const copy = new Date(date);
@@ -32,11 +34,35 @@ const formatTimeRange = (date) => {
   return `${start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
 };
 
+const getStatusVariant = (status) => {
+  switch (status) {
+    case 'approved':
+      return 'success';
+    case 'rejected':
+      return 'danger';
+    case 'completed':
+      return 'info';
+    case 'cancelled':
+      return 'danger';
+    default:
+      return 'warning';
+  }
+};
+
+const getStatusLabel = (status) => {
+  if (status === 'approved') {
+    return 'accepted';
+  }
+
+  return status;
+};
+
 export const MySchedule = () => {
   const { user, token } = useAppContext();
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date()));
   const [appointments, setAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeAppointmentId, setActiveAppointmentId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -106,6 +132,27 @@ export const MySchedule = () => {
   }, [weeklyAppointments]);
 
   const hours = Array.from({ length: 11 }, (_, index) => index + 8);
+
+  const updateAppointmentState = async (appointmentId, nextStatus) => {
+    if (!token) {
+      return;
+    }
+
+    setActiveAppointmentId(appointmentId);
+    setError('');
+
+    try {
+      const updatedAppointment = await updateAppointment(token, appointmentId, { status: nextStatus });
+
+      setAppointments((current) =>
+        current.map((appointment) => (appointment._id === appointmentId ? updatedAppointment : appointment))
+      );
+    } catch (err) {
+      setError(err.message || 'Failed to update appointment');
+    } finally {
+      setActiveAppointmentId('');
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -195,16 +242,46 @@ export const MySchedule = () => {
                           {slotAppointments.map((appointment) => (
                             <div
                               key={appointment._id}
-                              className={`rounded-xl border-l-4 p-2 shadow-sm ${appointment.status === 'completed' ? 'bg-emerald-50 border-emerald-500' : appointment.status === 'cancelled' ? 'bg-rose-50 border-rose-500' : 'bg-blue-50 border-blue-600'}`}>
+                              className={`rounded-xl border-l-4 p-2 shadow-sm ${appointment.status === 'completed' ? 'bg-emerald-50 border-emerald-500' : ['cancelled', 'rejected'].includes(appointment.status) ? 'bg-rose-50 border-rose-500' : 'bg-blue-50 border-blue-600'}`}>
                               <p className="text-xs font-bold text-slate-900 truncate">
                                 {appointment.patient?.fullName || 'Patient'}
                               </p>
                               <p className="text-[11px] text-slate-600 truncate">
                                 {formatTimeRange(appointment.appointmentDate)}
                               </p>
-                              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mt-1">
-                                {appointment.status}
-                              </p>
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <Badge variant={getStatusVariant(appointment.status)} className="capitalize">
+                                  {getStatusLabel(appointment.status)}
+                                </Badge>
+                                {appointment.paymentStatus === 'paid' && (
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
+                                    Paid
+                                  </span>
+                                )}
+                              </div>
+                              {(appointment.status === 'pending' || appointment.status === 'approved') && (
+                                <div className="mt-2 flex gap-2">
+                                  {appointment.status === 'pending' && (
+                                    <Button
+                                      size="sm"
+                                      className="h-8 px-3 text-[11px]"
+                                      isLoading={activeAppointmentId === appointment._id}
+                                      onClick={() => updateAppointmentState(appointment._id, 'approved')}
+                                    >
+                                      Accept
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 px-3 text-[11px]"
+                                    isLoading={activeAppointmentId === appointment._id}
+                                    onClick={() => updateAppointmentState(appointment._id, 'rejected')}
+                                  >
+                                    Reject
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>

@@ -23,7 +23,8 @@ import {
   validateAddPrescription,
   validateMedicalRecordQuery,
   validateMongoIdParam,
-  validateAppointmentMedicalRecordParam
+  validateAppointmentMedicalRecordParam,
+  validatePatientMedicalRecordParam
 } from "../validators/medicalRecord.validation.js";
 
 const router = Router();
@@ -54,7 +55,7 @@ router.get(
   "/patient/:patientId",
   protect,
   authorize(ROLES.DOCTOR, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.NURSE),
-  validate(validateMongoIdParam, "params"),
+  validate(validatePatientMedicalRecordParam, "params"),
   validate(validateMedicalRecordQuery, "query"),
   getPatientRecords
 );

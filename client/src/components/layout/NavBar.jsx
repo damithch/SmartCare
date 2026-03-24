@@ -50,7 +50,7 @@ export const NavBar = () => {
     page: 'doctor-dashboard'
   },
   {
-    name: 'My Schedule',
+    name: 'Appointment Management',
     icon: CalendarIcon,
     page: 'my-schedule'
   },

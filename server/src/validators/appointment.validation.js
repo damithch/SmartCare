@@ -80,19 +80,19 @@ export const validateUpdateAppointment = Joi.object({
       "date.min": "Appointment date cannot be in the past"
     }),
   status: Joi.string()
-    .valid("scheduled", "completed", "cancelled")
+    .valid("pending", "approved", "rejected", "completed", "cancelled")
     .optional()
     .messages({
-      "any.only": "Status must be one of: scheduled, completed, cancelled"
+      "any.only": "Status must be one of: pending, approved, rejected, completed, cancelled"
     })
 }).min(1);
 
 export const validateAppointmentStatus = Joi.object({
   status: Joi.string()
-    .valid("scheduled", "completed", "cancelled")
+    .valid("pending", "approved", "rejected", "completed", "cancelled")
     .required()
     .messages({
-      "any.only": "Status must be one of: scheduled, completed, cancelled",
+      "any.only": "Status must be one of: pending, approved, rejected, completed, cancelled",
       "string.empty": "Status is required"
     })
 });
@@ -106,7 +106,7 @@ export const validateAppointmentQuery = Joi.object({
     .max(100)
     .optional(),
   status: Joi.string()
-    .valid("scheduled", "completed", "cancelled")
+    .valid("pending", "approved", "rejected", "completed", "cancelled")
     .optional(),
   doctorId: Joi.string()
     .regex(/^[0-9a-fA-F]{24}$/)

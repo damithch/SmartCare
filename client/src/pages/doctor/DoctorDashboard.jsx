@@ -163,7 +163,7 @@ export const DoctorDashboard = () => {
 
   const upcomingAppointments = useMemo(
     () => appointments
-      .filter((appointment) => appointment.status === 'scheduled' && new Date(appointment.appointmentDate) >= new Date())
+      .filter((appointment) => ['pending', 'approved'].includes(appointment.status) && new Date(appointment.appointmentDate) >= new Date())
       .sort((a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate)),
     [appointments]
   );
@@ -199,7 +199,7 @@ export const DoctorDashboard = () => {
   );
 
   const pendingConsultations = useMemo(
-    () => todaysAppointments.filter((appointment) => appointment.status === 'scheduled'),
+    () => todaysAppointments.filter((appointment) => appointment.status === 'approved'),
     [todaysAppointments]
   );
 
@@ -213,6 +213,10 @@ export const DoctorDashboard = () => {
   const patientTrend = getTrend(uniquePatientsCount, Math.max(uniquePatientsCount - Math.max(todaysAppointments.length, 1), 0));
   const pendingTrend = getTrend(pendingConsultations.length, todaysAppointments.length - pendingConsultations.length);
   const revenueTrend = getTrend(monthlyRevenue, monthlyRevenue - completedThisMonth.reduce((sum, appointment) => sum + Number(appointment.amountPaid || 0), 0));
+  const pendingApprovals = useMemo(
+    () => todaysAppointments.filter((appointment) => appointment.status === 'pending'),
+    [todaysAppointments]
+  );
 
   const stats = [
     {
@@ -247,6 +251,17 @@ export const DoctorDashboard = () => {
       trendUp: !pendingTrend.directionUp,
       sparklineData: appointmentTrendData,
       sparklineColor: '#D97706'
+    },
+    {
+      label: 'Awaiting Approval',
+      value: pendingApprovals.length,
+      icon: CheckCircle2Icon,
+      color: 'text-cyan-600',
+      bg: 'bg-cyan-100',
+      trend: `${pendingApprovals.length}`,
+      trendUp: false,
+      sparklineData: appointmentTrendData,
+      sparklineColor: '#0891B2'
     },
     {
       label: 'Monthly Revenue',
@@ -294,7 +309,7 @@ export const DoctorDashboard = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Welcome back, Dr. {lastName}</h1>
-          <p className="mt-1 font-medium text-slate-500">{currentDate} • Here's your live practice overview.</p>
+          <p className="mt-1 font-medium text-slate-500">{currentDate} ï¿½ Here's your live practice overview.</p>
         </div>
         <div className="flex flex-shrink-0 gap-3">
           <Button variant="outline" onClick={() => navigate('availability')} className="shadow-sm">
@@ -310,7 +325,7 @@ export const DoctorDashboard = () => {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {stats.map((stat) => (
           <motion.div key={stat.label} variants={itemVariants}>
             <Card className="group relative overflow-hidden p-5 transition-colors hover:border-blue-200">
@@ -359,7 +374,7 @@ export const DoctorDashboard = () => {
               <div className="relative ml-3 space-y-8 border-l-2 border-slate-100 py-2">
                 {todaysAppointments.map((appointment, index) => {
                   const appointmentTime = formatTime(appointment.appointmentDate);
-                  const isNext = appointment.status === 'scheduled' && index === 0;
+                  const isNext = ['pending', 'approved'].includes(appointment.status) && index === 0;
                   const patientName = appointment.patient?.fullName || 'Patient';
                   const patientEmail = appointment.patient?.email || 'No email';
 
@@ -385,10 +400,10 @@ export const DoctorDashboard = () => {
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <Badge variant={appointment.status === 'scheduled' ? 'warning' : appointment.status === 'completed' ? 'success' : 'danger'} className="capitalize font-semibold">
+                            <Badge variant={appointment.status === 'approved' ? 'success' : appointment.status === 'pending' ? 'warning' : appointment.status === 'completed' ? 'info' : ['rejected', 'cancelled'].includes(appointment.status) ? 'danger' : 'default'} className="capitalize font-semibold">
                               {appointment.status}
                             </Badge>
-                            {appointment.status === 'scheduled' ? (
+                            {appointment.status === 'approved' ? (
                               <Button size="sm" onClick={() => navigate('consultations')} className={isNext ? 'shadow-md shadow-blue-500/20' : ''}>
                                 Start
                               </Button>
@@ -463,7 +478,7 @@ export const DoctorDashboard = () => {
                           {appointment.patient?.fullName || 'Patient'}
                         </p>
                         <p className="mt-0.5 truncate text-xs font-medium text-slate-500">
-                          {formatTime(appointment.appointmentDate)} • {appointment.patient?.email || 'No email'}
+                          {formatTime(appointment.appointmentDate)} ï¿½ {appointment.patient?.email || 'No email'}
                         </p>
                       </div>
                       <ChevronRightIcon className="h-4 w-4 text-slate-300 transition-colors group-hover:text-blue-500" />

@@ -29,7 +29,7 @@ export const TopBar = ({ toggleSidebar }) => {
       'my-appointments': 'My Appointments',
       'medical-history': 'Medical History',
       'doctor-dashboard': 'Doctor Dashboard',
-      'my-schedule': 'My Schedule',
+      'my-schedule': 'Appointment Management',
       availability: 'Availability Manager',
       consultations: 'Consultations',
       'pharmacist-dashboard': 'Pharmacist Dashboard',

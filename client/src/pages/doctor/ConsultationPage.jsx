@@ -110,7 +110,7 @@ export const ConsultationPage = () => {
         const [appointmentData, medicineData] = await Promise.all([fetchMyAppointments(token), fetchMedicines(token)]);
         if (!isMounted) return;
 
-        const nextAppointments = Array.isArray(appointmentData) ? appointmentData.filter((appointment) => appointment.status !== 'cancelled') : [];
+        const nextAppointments = Array.isArray(appointmentData) ? appointmentData.filter((appointment) => !['cancelled', 'rejected'].includes(appointment.status)) : [];
         setAppointments(nextAppointments);
         setMedicines(Array.isArray(medicineData) ? medicineData : []);
         if (nextAppointments.length > 0) {
@@ -145,10 +145,7 @@ export const ConsultationPage = () => {
       try {
         const [patientRecords, consultationRecord, patientProfile] = await Promise.all([
           fetchPatientMedicalRecords(token, selectedAppointment.patient?._id),
-          fetchAppointmentMedicalRecord(token, selectedAppointment._id).catch((err) => {
-            if ((err.message || '').toLowerCase().includes('not found')) return null;
-            throw err;
-          }),
+          fetchAppointmentMedicalRecord(token, selectedAppointment._id),
           fetchUserById(token, selectedAppointment.patient?._id)
         ]);
 
@@ -285,7 +282,7 @@ export const ConsultationPage = () => {
                           <p className="truncate font-semibold text-slate-900">{appointment.patient?.fullName || 'Patient'}</p>
                           <p className="truncate text-xs text-slate-500">{appointment.patient?.email || 'No email'}</p>
                         </div>
-                        <Badge variant={appointment.status === 'completed' ? 'success' : 'warning'} className="capitalize">{appointment.status}</Badge>
+                        <Badge variant={appointment.status === 'completed' ? 'success' : appointment.status === 'approved' ? 'info' : 'warning'} className="capitalize">{appointment.status}</Badge>
                       </div>
                       <p className="mt-2 flex items-center text-xs text-slate-500"><CalendarIcon className="mr-1 h-3 w-3" /> {formatAppointmentDate(appointment.appointmentDate)}</p>
                     </div>

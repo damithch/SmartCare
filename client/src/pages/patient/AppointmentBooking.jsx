@@ -29,6 +29,13 @@ import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 
 const getToday = () => new Date().toISOString().split('T')[0];
+const safeLoadStripe = (publishableKey) => {
+  if (!publishableKey) {
+    return Promise.resolve(null);
+  }
+
+  return loadStripe(publishableKey).catch(() => null);
+};
 
 const cardElementOptions = {
   style: {
@@ -250,6 +257,7 @@ export const AppointmentBooking = () => {
   const [confirmation, setConfirmation] = useState(null);
   const [slots, setSlots] = useState([]);
   const [checkout, setCheckout] = useState(null);
+  const [stripeLoadError, setStripeLoadError] = useState('');
 
   useEffect(() => {
     if (!user || !token) {
@@ -332,9 +340,30 @@ export const AppointmentBooking = () => {
   }, [selectedDate, selectedDoctor, token]);
 
   const stripePromise = useMemo(
-    () => (checkout?.publishableKey ? loadStripe(checkout.publishableKey) : null),
+    () => (checkout?.publishableKey ? safeLoadStripe(checkout.publishableKey) : null),
     [checkout?.publishableKey]
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!stripePromise) {
+      setStripeLoadError('');
+      return undefined;
+    }
+
+    stripePromise.then((stripeInstance) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setStripeLoadError(stripeInstance ? '' : 'Stripe payment form could not be loaded. Check your internet connection or Stripe key and try again.');
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [stripePromise]);
 
   const specializations = useMemo(
     () => ['All', ...new Set(doctors.map((doctor) => getDoctorSpecialization(doctor)))],
@@ -713,20 +742,29 @@ export const AppointmentBooking = () => {
               </div>
             </div>
 
-            <Elements stripe={stripePromise} options={{ clientSecret: checkout.clientSecret }}>
-              <AppointmentPaymentForm
-                checkout={checkout}
-                selectedDoctor={selectedDoctor}
-                selectedSlot={selectedSlot}
-                user={user}
-                token={token}
-                onBack={() => setStep(2)}
-                onSuccess={(appointment) => {
-                  setConfirmation(appointment);
-                  setStep(4);
-                }}
-              />
-            </Elements>
+            {stripeLoadError ? (
+              <Card className="p-6">
+                <p className="text-sm text-red-600">{stripeLoadError}</p>
+                <div className="mt-4">
+                  <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
+                </div>
+              </Card>
+            ) : (
+              <Elements stripe={stripePromise} options={{ clientSecret: checkout.clientSecret }}>
+                <AppointmentPaymentForm
+                  checkout={checkout}
+                  selectedDoctor={selectedDoctor}
+                  selectedSlot={selectedSlot}
+                  user={user}
+                  token={token}
+                  onBack={() => setStep(2)}
+                  onSuccess={(appointment) => {
+                    setConfirmation(appointment);
+                    setStep(4);
+                  }}
+                />
+              </Elements>
+            )}
           </motion.div>
         )}
 
@@ -748,7 +786,7 @@ export const AppointmentBooking = () => {
 
             <h2 className="text-3xl font-bold text-slate-900">Payment Successful</h2>
             <p className="mx-auto mt-3 max-w-lg text-slate-500">
-              Your booking with {confirmation.doctor?.fullName || getDoctorName(selectedDoctor)} is scheduled for{' '}
+              Your booking with {confirmation.doctor?.fullName || getDoctorName(selectedDoctor)} is pending doctor approval for{' '}
               {formatAppointmentDate(confirmation.appointmentDate)}.
             </p>
 

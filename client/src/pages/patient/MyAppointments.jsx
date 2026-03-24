@@ -18,8 +18,12 @@ const formatPrice = (value) => `$${Number(value || 0).toFixed(2)}`;
 
 const getStatusColor = (status) => {
   switch (status) {
-    case 'scheduled':
+    case 'approved':
       return 'success';
+    case 'pending':
+      return 'warning';
+    case 'rejected':
+      return 'danger';
     case 'completed':
       return 'info';
     case 'cancelled':
@@ -40,6 +44,14 @@ const getPaymentColor = (status) => {
     default:
       return 'default';
   }
+};
+
+const getStatusLabel = (status) => {
+  if (status === 'approved') {
+    return 'accepted';
+  }
+
+  return status;
 };
 
 export const MyAppointments = () => {
@@ -93,7 +105,7 @@ export const MyAppointments = () => {
       }
 
       if (activeTab === 'Upcoming') {
-        return appointment.status === 'scheduled' && new Date(appointment.appointmentDate) >= now;
+        return ['pending', 'approved'].includes(appointment.status) && new Date(appointment.appointmentDate) >= now;
       }
 
       return appointment.status === activeTab.toLowerCase();
@@ -104,7 +116,7 @@ export const MyAppointments = () => {
     return null;
   }
 
-  const tabs = ['All', 'Upcoming', 'Completed', 'Cancelled'];
+  const tabs = ['All', 'Upcoming', 'Pending', 'Approved', 'Rejected', 'Completed', 'Cancelled'];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -164,7 +176,7 @@ export const MyAppointments = () => {
                     </div>
                     <div className="text-right md:text-center">
                       <Badge variant={getStatusColor(appointment.status)} className="mb-1 capitalize md:hidden">
-                        {appointment.status}
+                        {getStatusLabel(appointment.status)}
                       </Badge>
                       <p className="flex items-center justify-end text-sm font-medium text-slate-600 md:justify-center">
                         <ClockIcon className="mr-1 h-3 w-3" />
@@ -183,7 +195,7 @@ export const MyAppointments = () => {
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant={getStatusColor(appointment.status)} className="hidden capitalize md:inline-flex">
-                            {appointment.status}
+                            {getStatusLabel(appointment.status)}
                           </Badge>
                           <Badge variant={getPaymentColor(appointment.paymentStatus)} className="capitalize">
                             {appointment.paymentStatus || 'pending'}

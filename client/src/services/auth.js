@@ -60,6 +60,10 @@ export const deleteMyAvailability = (token, id) =>
 
 export const fetchMyAppointments = (token) =>
   authenticatedRequest("/appointments/my?limit=100&sortBy=appointmentDate&sortOrder=asc", token, { method: "GET" });
+export const updateAppointment = (token, id, body) =>
+  authenticatedRequest(`/appointments/${encodeURIComponent(id)}`, token, { method: "PATCH", body: JSON.stringify(body) });
+export const cancelAppointment = (token, id) =>
+  authenticatedRequest(`/appointments/${encodeURIComponent(id)}`, token, { method: "DELETE" });
 
 export const fetchDoctors = (token, search = "") =>
   authenticatedRequest(`/users/doctors${search ? `?search=${encodeURIComponent(search)}` : ""}`, token, { method: "GET" });
@@ -86,8 +90,23 @@ export const addMedicine = (token, body) =>
   authenticatedRequest("/medicines", token, { method: "POST", body: JSON.stringify(body) });
 
 export const fetchPatientMedicalRecords = (token, patientId) =>
-  authenticatedRequest(`/medical-records/patient/${encodeURIComponent(patientId)}?limit=20&sortBy=createdAt&sortOrder=desc`, token, { method: "GET" });
-export const fetchAppointmentMedicalRecord = (token, appointmentId) =>
-  authenticatedRequest(`/medical-records/appointment/${encodeURIComponent(appointmentId)}`, token, { method: "GET" });
+  patientId
+    ? authenticatedRequest(`/medical-records/patient/${encodeURIComponent(patientId)}?limit=20&sortBy=createdAt&sortOrder=desc`, token, { method: "GET" })
+    : Promise.resolve([]);
+export const fetchAppointmentMedicalRecord = async (token, appointmentId) => {
+  if (!appointmentId) {
+    return null;
+  }
+
+  try {
+    return await authenticatedRequest(`/medical-records/appointment/${encodeURIComponent(appointmentId)}`, token, { method: "GET" });
+  } catch (error) {
+    if ((error.message || "").toLowerCase().includes("not found")) {
+      return null;
+    }
+
+    throw error;
+  }
+};
 export const saveConsultation = (token, body) =>
   authenticatedRequest("/medical-records/consultation", token, { method: "POST", body: JSON.stringify(body) });

@@ -68,7 +68,7 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
     section: 'MAIN MENU'
   },
   {
-    name: 'My Schedule',
+    name: 'Appointment Management',
     icon: CalendarIcon,
     page: 'my-schedule',
     section: 'MANAGEMENT'
