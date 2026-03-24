@@ -1,4 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+const GET_CACHE_TTL_MS = 30 * 1000;
+const requestCache = new Map();
 
 const parseError = async (response) => {
   try {
@@ -27,6 +29,8 @@ const request = async (path, body) => {
 };
 
 const authenticatedRequest = async (path, token, options = {}) => {
+  const method = String(options.method || "GET").toUpperCase();
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
@@ -41,28 +45,53 @@ const authenticatedRequest = async (path, token, options = {}) => {
   }
 
   const payload = await response.json();
+
+  if (method !== "GET") {
+    requestCache.clear();
+  }
+
   return payload.data;
+};
+
+const getCacheKey = (path, token) => `${token}:${path}`;
+
+const cachedAuthenticatedGet = async (path, token, ttlMs = GET_CACHE_TTL_MS) => {
+  const cacheKey = getCacheKey(path, token);
+  const cached = requestCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && (now - cached.timestamp) < ttlMs) {
+    return cached.data;
+  }
+
+  const data = await authenticatedRequest(path, token, { method: "GET" });
+  requestCache.set(cacheKey, {
+    data,
+    timestamp: now
+  });
+
+  return data;
 };
 
 export const loginUser = (credentials) => request("/auth/login", credentials);
 export const registerUser = (userData) => request("/auth/register", userData);
 
-export const fetchMyProfile = (token) => authenticatedRequest("/users/me", token, { method: "GET" });
-export const fetchUserById = (token, id) => authenticatedRequest(`/users/${encodeURIComponent(id)}`, token, { method: "GET" });
+export const fetchMyProfile = (token) => cachedAuthenticatedGet("/users/me", token, 60 * 1000);
+export const fetchUserById = (token, id) => cachedAuthenticatedGet(`/users/${encodeURIComponent(id)}`, token, 60 * 1000);
 export const updateMyProfile = (token, body) => authenticatedRequest("/users/me", token, { method: "PATCH", body: JSON.stringify(body) });
 
 export const fetchMyAvailability = (token, date) =>
-  authenticatedRequest(`/doctor-availability/me${date ? `?date=${date}` : ""}`, token, { method: "GET" });
+  cachedAuthenticatedGet(`/doctor-availability/me${date ? `?date=${date}` : ""}`, token, 15 * 1000);
 export const createMyAvailability = (token, body) =>
   authenticatedRequest("/doctor-availability/me", token, { method: "POST", body: JSON.stringify(body) });
 export const deleteMyAvailability = (token, id) =>
   authenticatedRequest(`/doctor-availability/me/${id}`, token, { method: "DELETE" });
 
 export const fetchMyAppointments = (token) =>
-  authenticatedRequest("/appointments/my?limit=100&sortBy=appointmentDate&sortOrder=asc", token, { method: "GET" });
+  cachedAuthenticatedGet("/appointments/my?limit=30&sortBy=appointmentDate&sortOrder=asc", token, 20 * 1000);
 export const fetchPatientUpcomingAppointments = (token, patientId) =>
   patientId
-    ? authenticatedRequest(`/appointments/patient/${encodeURIComponent(patientId)}/upcoming`, token, { method: "GET" })
+    ? cachedAuthenticatedGet(`/appointments/patient/${encodeURIComponent(patientId)}/upcoming`, token, 20 * 1000)
     : Promise.resolve([]);
 export const updateAppointment = (token, id, body) =>
   authenticatedRequest(`/appointments/${encodeURIComponent(id)}`, token, { method: "PATCH", body: JSON.stringify(body) });
@@ -70,13 +99,13 @@ export const cancelAppointment = (token, id) =>
   authenticatedRequest(`/appointments/${encodeURIComponent(id)}`, token, { method: "DELETE" });
 
 export const fetchDoctors = (token, search = "") =>
-  authenticatedRequest(`/users/doctors${search ? `?search=${encodeURIComponent(search)}` : ""}`, token, { method: "GET" });
+  cachedAuthenticatedGet(`/users/doctors${search ? `?search=${encodeURIComponent(search)}` : ""}`, token, 30 * 1000);
 
 export const fetchDoctorAvailability = (token, doctorId, date) =>
-  authenticatedRequest(
+  cachedAuthenticatedGet(
     `/doctor-availability?doctorId=${encodeURIComponent(doctorId)}${date ? `&date=${encodeURIComponent(date)}` : ""}`,
     token,
-    { method: "GET" }
+    15 * 1000
   );
 
 export const createAppointment = (token, body) =>
@@ -87,16 +116,16 @@ export const confirmAppointmentPayment = (token, body) =>
   authenticatedRequest("/appointments/confirm-payment", token, { method: "POST", body: JSON.stringify(body) });
 
 export const fetchMedicines = (token, search = "") =>
-  authenticatedRequest(`/medicines?limit=100${search ? `&search=${encodeURIComponent(search)}` : ""}`, token, { method: "GET" });
+  cachedAuthenticatedGet(`/medicines?limit=50${search ? `&search=${encodeURIComponent(search)}` : ""}`, token, 30 * 1000);
 export const fetchLowStockMedicines = (token) =>
-  authenticatedRequest("/medicines/inventory/low-stock", token, { method: "GET" });
+  cachedAuthenticatedGet("/medicines/inventory/low-stock", token, 20 * 1000);
 export const addMedicine = (token, body) =>
   authenticatedRequest("/medicines", token, { method: "POST", body: JSON.stringify(body) });
 export const fetchPrescriptionQueue = (token, status = "", search = "") =>
-  authenticatedRequest(
-    `/medical-records/prescriptions/queue?limit=100${status ? `&status=${encodeURIComponent(status)}` : ""}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
+  cachedAuthenticatedGet(
+    `/medical-records/prescriptions/queue?limit=50${status ? `&status=${encodeURIComponent(status)}` : ""}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
     token,
-    { method: "GET" }
+    15 * 1000
   );
 export const updatePrescriptionQueueStatus = (token, recordId, prescriptionId, status) =>
   authenticatedRequest(
@@ -105,15 +134,15 @@ export const updatePrescriptionQueueStatus = (token, recordId, prescriptionId, s
     { method: "PATCH", body: JSON.stringify({ status }) }
   );
 export const fetchMyBills = (token, status = "") =>
-  authenticatedRequest(`/bills?limit=100&sortBy=createdAt&sortOrder=desc${status ? `&status=${encodeURIComponent(status)}` : ""}`, token, { method: "GET" });
+  cachedAuthenticatedGet(`/bills?limit=30&sortBy=createdAt&sortOrder=desc${status ? `&status=${encodeURIComponent(status)}` : ""}`, token, 20 * 1000);
 export const payBill = (token, body) =>
   authenticatedRequest("/payments", token, { method: "POST", body: JSON.stringify(body) });
 
 export const fetchMyMedicalRecords = (token) =>
-  authenticatedRequest("/medical-records/my?limit=20&sortBy=createdAt&sortOrder=desc", token, { method: "GET" });
+  cachedAuthenticatedGet("/medical-records/my?limit=15&sortBy=createdAt&sortOrder=desc", token, 20 * 1000);
 export const fetchPatientMedicalRecords = (token, patientId) =>
   patientId
-    ? authenticatedRequest(`/medical-records/patient/${encodeURIComponent(patientId)}?limit=20&sortBy=createdAt&sortOrder=desc`, token, { method: "GET" })
+    ? cachedAuthenticatedGet(`/medical-records/patient/${encodeURIComponent(patientId)}?limit=15&sortBy=createdAt&sortOrder=desc`, token, 20 * 1000)
     : Promise.resolve([]);
 export const fetchAppointmentMedicalRecord = async (token, appointmentId) => {
   if (!appointmentId) {
@@ -121,7 +150,7 @@ export const fetchAppointmentMedicalRecord = async (token, appointmentId) => {
   }
 
   try {
-    return await authenticatedRequest(`/medical-records/appointment/${encodeURIComponent(appointmentId)}`, token, { method: "GET" });
+    return await cachedAuthenticatedGet(`/medical-records/appointment/${encodeURIComponent(appointmentId)}`, token, 15 * 1000);
   } catch (error) {
     if ((error.message || "").toLowerCase().includes("not found")) {
       return null;
