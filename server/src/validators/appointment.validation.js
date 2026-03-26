@@ -1,0 +1,133 @@
+import Joi from "joi";
+
+export const validateCreateAppointment = Joi.object({
+  patientId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid patient ID format",
+      "string.empty": "Patient ID is required"
+    }),
+  doctorId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid doctor ID format",
+      "string.empty": "Doctor ID is required"
+    }),
+  appointmentDate: Joi.date()
+    .iso()
+    .min("now")
+    .optional()
+    .messages({
+      "date.base": "Invalid date format",
+      "date.min": "Appointment date cannot be in the past"
+    }),
+  availabilityId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional()
+    .messages({
+      "string.pattern.base": "Invalid availability slot ID format"
+    })
+}).or("appointmentDate", "availabilityId");
+
+export const validateAppointmentCheckout = Joi.object({
+  patientId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid patient ID format",
+      "string.empty": "Patient ID is required"
+    }),
+  doctorId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid doctor ID format",
+      "string.empty": "Doctor ID is required"
+    }),
+  availabilityId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid availability slot ID format",
+      "string.empty": "Availability slot ID is required"
+    })
+});
+
+export const validateConfirmAppointmentPayment = Joi.object({
+  patientId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required(),
+  doctorId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required(),
+  availabilityId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required(),
+  paymentIntentId: Joi.string().required().messages({
+    "string.empty": "Payment intent ID is required"
+  })
+});
+
+export const validateUpdateAppointment = Joi.object({
+  appointmentDate: Joi.date()
+    .iso()
+    .min("now")
+    .optional()
+    .messages({
+      "date.base": "Invalid date format",
+      "date.min": "Appointment date cannot be in the past"
+    }),
+  status: Joi.string()
+    .valid("pending", "approved", "rejected", "completed", "cancelled")
+    .optional()
+    .messages({
+      "any.only": "Status must be one of: pending, approved, rejected, completed, cancelled"
+    })
+}).min(1);
+
+export const validateAppointmentStatus = Joi.object({
+  status: Joi.string()
+    .valid("pending", "approved", "rejected", "completed", "cancelled")
+    .required()
+    .messages({
+      "any.only": "Status must be one of: pending, approved, rejected, completed, cancelled",
+      "string.empty": "Status is required"
+    })
+});
+
+export const validateAppointmentQuery = Joi.object({
+  page: Joi.number()
+    .min(1)
+    .optional(),
+  limit: Joi.number()
+    .min(1)
+    .max(100)
+    .optional(),
+  status: Joi.string()
+    .valid("pending", "approved", "rejected", "completed", "cancelled")
+    .optional(),
+  doctorId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional(),
+  patientId: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .optional(),
+  sortBy: Joi.string()
+    .valid("appointmentDate", "createdAt", "updatedAt")
+    .optional(),
+  sortOrder: Joi.string()
+    .valid("asc", "desc")
+    .optional()
+});
+
+export const validateMongoIdParam = Joi.object({
+  id: Joi.string()
+    .regex(/^[0-9a-fA-F]{24}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid appointment ID format",
+      "string.empty": "Appointment ID is required"
+    })
+});

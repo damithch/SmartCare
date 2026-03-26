@@ -1,16 +1,16 @@
 import { createUser, findUserByEmail } from "./user.service.js";
 import { generateToken } from "../utils/jwt.js";
+import AppError from "../utils/appError.js";
 
 export const registerService = async ({ fullName, email, password, role }) => {
-  const existingUser = await findUserByEmail(email);
+  const normalizedEmail = email.trim().toLowerCase();
+  const existingUser = await findUserByEmail(normalizedEmail);
 
   if (existingUser) {
-    const error = new Error("Email is already registered");
-    error.statusCode = 409;
-    throw error;
+    throw new AppError("Email is already registered", 409, "DUPLICATE_EMAIL");
   }
 
-  const user = await createUser({ fullName, email, password, role });
+  const user = await createUser({ fullName, email: normalizedEmail, password, role });
 
   const token = generateToken({ id: user._id, role: user.role });
 
@@ -18,20 +18,21 @@ export const registerService = async ({ fullName, email, password, role }) => {
 };
 
 export const loginService = async ({ email, password }) => {
-  const user = await findUserByEmail(email);
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await findUserByEmail(normalizedEmail);
 
   if (!user) {
-    const error = new Error("Invalid email or password");
-    error.statusCode = 401;
-    throw error;
+    throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");
+  }
+
+  if (!user.isActive) {
+    throw new AppError("Account is deactivated", 403, "ACCOUNT_DEACTIVATED");
   }
 
   const isMatched = await user.comparePassword(password);
 
   if (!isMatched) {
-    const error = new Error("Invalid email or password");
-    error.statusCode = 401;
-    throw error;
+    throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");
   }
 
   const token = generateToken({ id: user._id, role: user.role });

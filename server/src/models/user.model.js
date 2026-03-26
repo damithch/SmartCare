@@ -26,6 +26,54 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: Object.values(ROLES),
       default: ROLES.PATIENT
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    studentId: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    department: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    level: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    bio: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    specialization: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    consultationFee: {
+      type: Number,
+      default: 0
+    },
+    avatar: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    coverImage: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    isActive: {
+      type: Boolean,
+      default: true
     }
   },
   { timestamps: true }

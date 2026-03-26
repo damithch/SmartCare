@@ -1,8 +1,8 @@
+import "dotenv/config";
 import mongoose from "mongoose";
-import env from "./env.js";
 
 const connectDB = async () => {
-  await mongoose.connect(env.mongoUri);
+  await mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/smartcare");
   console.log("MongoDB connected");
 };
 
