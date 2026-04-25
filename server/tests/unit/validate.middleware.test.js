@@ -60,3 +60,58 @@ test("validate forwards AppError with field details on invalid payload", () => {
     email: '"email" must be a valid email'
   });
 });
+
+test("validate sanitizes query data when a non-body source is provided", () => {
+  const schema = Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    sortOrder: Joi.string().valid("asc", "desc").default("asc")
+  });
+  const middleware = validate(schema, "query");
+  const req = {
+    query: {
+      page: "2",
+      ignored: "remove-me"
+    }
+  };
+  const res = createResponse();
+  let nextCalled = false;
+
+  middleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  assert.equal(nextCalled, true);
+  assert.deepEqual(req.query, {
+    page: 2,
+    sortOrder: "asc"
+  });
+});
+
+test("validate reports nested field paths for invalid params data", () => {
+  const schema = Joi.object({
+    filter: Joi.object({
+      id: Joi.string().length(24).required()
+    }).required()
+  });
+  const middleware = validate(schema, "params");
+  const req = {
+    params: {
+      filter: {
+        id: "short-id"
+      }
+    }
+  };
+  const res = createResponse();
+  let receivedError = null;
+
+  middleware(req, res, (error) => {
+    receivedError = error;
+  });
+
+  assert.ok(receivedError instanceof AppError);
+  assert.equal(receivedError.statusCode, 400);
+  assert.equal(receivedError.code, "VALIDATION_ERROR");
+  assert.deepEqual(receivedError.details, {
+    "filter.id": '"filter.id" length must be 24 characters long'
+  });
+});

@@ -132,3 +132,79 @@ test("GET /api/v1/doctor-availability validates lookup query for allowed roles",
     }
   });
 });
+
+test("GET /api/v1/lab/tests validates query filters before controller execution", async (t) => {
+  const headers = mockAuthenticatedUser(t, createUser({ role: "admin" }));
+  const response = await request(app)
+    .get("/api/v1/lab/tests")
+    .set(headers)
+    .query({
+      category: "invalid-category",
+      minPrice: -1,
+      page: 0,
+      sortOrder: "up"
+    });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, {
+    success: false,
+    error: {
+      code: "VALIDATION_ERROR",
+      message: "Validation failed",
+      details: {
+        category: '"category" must be one of [pathology, radiology, cardiology, ultrasound, blood_test, urine_test, genetics, imaging, other, ]',
+        minPrice: '"minPrice" must be greater than or equal to 0',
+        page: '"page" must be greater than or equal to 1',
+        sortOrder: '"sortOrder" must be one of [asc, desc]'
+      }
+    }
+  });
+});
+
+test("POST /api/v1/doctor-availability/me validates doctor payload before controller execution", async (t) => {
+  const headers = mockAuthenticatedUser(t, createUser({ role: "doctor" }));
+  const response = await request(app)
+    .post("/api/v1/doctor-availability/me")
+    .set(headers)
+    .send({
+      date: "04-24-2026",
+      startTime: "9:00",
+      endTime: "17:00",
+      price: -10,
+      maxPatients: 0
+    });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, {
+    success: false,
+    error: {
+      code: "VALIDATION_ERROR",
+      message: "Validation failed",
+      details: {
+        date: "Date must be in YYYY-MM-DD format",
+        startTime: "Start time must be in HH:MM format",
+        price: "Price cannot be negative",
+        maxPatients: "Person count must be at least 1"
+      }
+    }
+  });
+});
+
+test("DELETE /api/v1/doctor-availability/me/:id validates availability slot params", async (t) => {
+  const headers = mockAuthenticatedUser(t, createUser({ role: "doctor" }));
+  const response = await request(app)
+    .delete("/api/v1/doctor-availability/me/not-a-valid-id")
+    .set(headers);
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.body, {
+    success: false,
+    error: {
+      code: "VALIDATION_ERROR",
+      message: "Validation failed",
+      details: {
+        id: "Invalid availability slot ID format"
+      }
+    }
+  });
+});
