@@ -1,8 +1,10 @@
 import React from 'react';
-import { LockIcon } from 'lucide-react';
-import { useAppContext } from '../../context/AppContext';
+import { getRoleLandingPath, useAppContext } from '../../context/AppContext';
+import { Link } from 'react-router-dom';
+
 export function TopBar() {
-  const { navigate } = useAppContext();
+  const { user } = useAppContext();
+
   const links = [
   'Home',
   'About Us',
@@ -27,18 +29,27 @@ export function TopBar() {
             </a>
           )}
         </div>
-        <div>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('login');
-            }}
-            className="flex items-center gap-2 hover:text-gray-300 transition-colors">
-
-            <LockIcon className="w-4 h-4" />
-            <span>Patient Portal</span>
-          </a>
+        <div className="flex items-center gap-4">
+          {user ? (
+            <Link
+              to={getRoleLandingPath(user.role)}
+              className="font-semibold hover:text-gray-300 transition-colors">
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="font-semibold hover:text-gray-300 transition-colors">
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="font-semibold hover:text-gray-300 transition-colors">
+                Create Account
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>);

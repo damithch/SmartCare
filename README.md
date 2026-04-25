@@ -88,7 +88,7 @@ This module handles medicine inventory and prescription processing.
 The backend in this repository is currently structured with:
 
 - Express.js for the API layer
-- MongoDB with Mongoose for data storage
+- PostgreSQL (Neon) for data storage
 - JWT authentication for protected access
 - Role-based access control for different hospital users
 

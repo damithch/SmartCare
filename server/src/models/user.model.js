@@ -1,94 +1,31 @@
-import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { ROLES } from "../constants/roles.js";
+import { createJsonModel } from "./postgresModel.js";
 
-const userSchema = new mongoose.Schema(
-  {
-    fullName: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true
-    },
-    password: {
-      type: String,
-      required: true,
-      minlength: 6,
-      select: false
-    },
-    role: {
-      type: String,
-      enum: Object.values(ROLES),
-      default: ROLES.PATIENT
-    },
-    phone: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    studentId: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    department: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    level: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    bio: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    specialization: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    consultationFee: {
-      type: Number,
-      default: 0
-    },
-    avatar: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    coverImage: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    isActive: {
-      type: Boolean,
-      default: true
-    }
+const User = createJsonModel("User", {
+  defaults: {
+    role: ROLES.PATIENT,
+    phone: "",
+    studentId: "",
+    department: "",
+    level: "",
+    bio: "",
+    specialization: "",
+    consultationFee: 0,
+    avatar: "",
+    coverImage: "",
+    isActive: true
   },
-  { timestamps: true }
-);
-
-userSchema.pre("save", async function hashPassword(next) {
-  if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
+  beforeSave: async (doc) => {
+    if (doc.password && (doc.__isNew || doc.isModified("password"))) {
+      doc.password = await bcrypt.hash(doc.password, 10);
+    }
+    if (doc.email) doc.email = doc.email.trim().toLowerCase();
+  }
 });
 
-userSchema.methods.comparePassword = function comparePassword(password) {
+User.prototype.comparePassword = function comparePassword(password) {
   return bcrypt.compare(password, this.password);
 };
-
-const User = mongoose.model("User", userSchema);
 
 export default User;

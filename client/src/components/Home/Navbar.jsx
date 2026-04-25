@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { HeartPulseIcon, MenuIcon, XIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '../../context/AppContext';
+import { Link } from 'react-router-dom';
+
 export function Navbar() {
-  const { navigate } = useAppContext();
+  const { user } = useAppContext();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   useEffect(() => {
@@ -53,11 +55,11 @@ export function Navbar() {
           </nav>
 
           <div className="hidden lg:block">
-            <button
-              className="bg-[#0047AB] hover:bg-[#003DA5] text-white px-8 py-3 rounded-md font-bold transition-all shadow-md"
-              onClick={() => navigate('register')}>
+            <Link
+              to={user ? "/book-appointment" : "/register"}
+              className="inline-block bg-[#0047AB] hover:bg-[#003DA5] text-white px-8 py-3 rounded-md font-bold transition-all shadow-md">
               Book Now
-            </button>
+            </Link>
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -107,14 +109,28 @@ export function Navbar() {
                   </li>
               )}
               </ul>
-              <button
-                className="w-full bg-[#0047AB] text-white px-6 py-4 rounded-md font-bold text-lg"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  navigate('register');
-                }}>
+              <Link
+                to={user ? "/book-appointment" : "/register"}
+                className="block text-center w-full bg-[#0047AB] text-white px-6 py-4 rounded-md font-bold text-lg"
+                onClick={() => setIsMobileMenuOpen(false)}>
                 Book Now
-              </button>
+              </Link>
+              {!user && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Link
+                    to="/login"
+                    className="block text-center w-full border border-[#0047AB] text-[#0047AB] px-4 py-3 rounded-md font-bold"
+                    onClick={() => setIsMobileMenuOpen(false)}>
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="block text-center w-full border border-slate-200 text-[#1A1A2E] px-4 py-3 rounded-md font-bold"
+                    onClick={() => setIsMobileMenuOpen(false)}>
+                    Create Account
+                  </Link>
+                </div>
+              )}
             </div>
           </motion.div>
         }

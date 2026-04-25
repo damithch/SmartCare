@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAppContext } from '../../context/AppContext';
 import { loginUser } from '../../services/auth';
+import { Link } from 'react-router-dom';
 
 export const LoginPage = () => {
   const { login, navigate } = useAppContext();
@@ -274,16 +275,12 @@ export const LoginPage = () => {
               </div>
 
               <div className="mt-6 text-center">
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate('register');
-                  }}
+                <Link
+                  to="/register"
                   className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
                 >
                   Create an account
-                </a>
+                </Link>
               </div>
             </div>
           </motion.div>

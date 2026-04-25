@@ -1,5 +1,6 @@
 import React from 'react';
-import { AppProvider, useAppContext } from './context/AppContext';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AppProvider, getRoleLandingPath, useAppContext } from './context/AppContext';
 import { TopBar as HomeTopBar } from './components/Home/TopBar';
 import { Navbar as HomeNavbar } from './components/Home/Navbar';
 import { HeroSection } from './components/Home/HeroSection';
@@ -64,44 +65,42 @@ const pageComponents = {
   profile: ProfilePage
 };
 
-const publicPages = new Set(['home', 'login', 'register']);
-
 const AppShell = () => {
-  const { user, currentPage } = useAppContext();
-
-  if (currentPage === 'home') {
-    return <HomePage />;
-  }
-
-  if (currentPage === 'login') {
-    return <LoginPage />;
-  }
-
-  if (currentPage === 'register') {
-    return <RegisterPage />;
-  }
-
-  if (!user) {
-    return <LoginPage />;
-  }
-
-  const PageComponent = pageComponents[currentPage];
-
-  if (!PageComponent) {
-    return publicPages.has(currentPage) ? <HomePage /> : <LoginPage />;
-  }
+  const { user } = useAppContext();
+  const dashboardPath = user ? getRoleLandingPath(user.role) : '/';
 
   return (
-    <DashboardLayout>
-      <PageComponent />
-    </DashboardLayout>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={user ? <Navigate to={dashboardPath} replace /> : <LoginPage />} />
+      <Route path="/register" element={user ? <Navigate to={dashboardPath} replace /> : <RegisterPage />} />
+      
+      {Object.entries(pageComponents).map(([path, Component]) => (
+        <Route 
+          key={path} 
+          path={`/${path}`} 
+          element={
+            user ? (
+              <DashboardLayout>
+                <Component />
+              </DashboardLayout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } 
+        />
+      ))}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 };
 
 export function App() {
   return (
-    <AppProvider>
-      <AppShell />
-    </AppProvider>
+    <BrowserRouter>
+      <AppProvider>
+        <AppShell />
+      </AppProvider>
+    </BrowserRouter>
   );
 }

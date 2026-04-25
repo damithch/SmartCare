@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const AppContext = createContext(null);
 const AUTH_STORAGE_KEY = 'smartcare.auth';
@@ -8,6 +9,13 @@ const roleLandingPage = {
   doctor: 'doctor-dashboard',
   pharmacist: 'pharmacist-dashboard',
   student: 'profile'
+};
+
+export const getRoleLandingPage = (role) => roleLandingPage[String(role || '').toLowerCase()] || 'home';
+
+export const getRoleLandingPath = (role) => {
+  const page = getRoleLandingPage(role);
+  return page === 'home' ? '/' : `/${page}`;
 };
 
 const normalizeUser = (user) => {
@@ -48,9 +56,11 @@ export const AppProvider = ({ children }) => {
   const storedSession = getStoredSession();
   const [user, setUser] = useState(storedSession?.user || null);
   const [token, setToken] = useState(storedSession?.token || null);
-  const [currentPage, setCurrentPage] = useState(
-    storedSession?.user ? roleLandingPage[storedSession.user.role] || 'home' : 'home'
-  );
+  
+  const routerNavigate = useNavigate();
+  const location = useLocation();
+  
+  const currentPage = location.pathname === '/' ? 'home' : location.pathname.substring(1);
 
   useEffect(() => {
     if (user && token) {
@@ -65,17 +75,21 @@ export const AppProvider = ({ children }) => {
     const normalizedUser = normalizeUser(session.user);
     setUser(normalizedUser);
     setToken(session.token);
-    setCurrentPage(roleLandingPage[normalizedUser.role] || 'home');
+    routerNavigate(getRoleLandingPath(normalizedUser.role));
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    setCurrentPage('home');
+    routerNavigate('/');
   };
 
   const navigate = (page) => {
-    setCurrentPage(page);
+    if (page === 'home') {
+      routerNavigate('/');
+    } else {
+      routerNavigate('/' + page.replace(/^\//, ''));
+    }
   };
 
   const updateUser = (nextUser) => {
