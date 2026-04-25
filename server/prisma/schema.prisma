@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  admin
+  doctor
+  patient
+  student
+  nurse
+  staff
+  receptionist
+  billing_staff
+  pharmacist
+  system_admin
+  hospital_manager
+}
+
+enum AppointmentStatus {
+  pending
+  approved
+  rejected
+  completed
+  cancelled
+}
+
+enum AppointmentPaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+model User {
+  id                String               @id @default(uuid()) @db.Uuid
+  fullName          String               @map("full_name")
+  email             String               @unique
+  passwordHash      String               @map("password_hash")
+  role              Role                 @default(patient)
+  phone             String               @default("")
+  studentId         String               @default("") @map("student_id")
+  department        String               @default("")
+  level             String               @default("")
+  bio               String               @default("")
+  specialization    String               @default("")
+  consultationFee   Decimal              @default(0) @db.Decimal(10, 2) @map("consultation_fee")
+  avatar            String               @default("")
+  coverImage        String               @default("") @map("cover_image")
+  isActive          Boolean              @default(true) @map("is_active")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  patientAppointments Appointment[]      @relation("AppointmentPatient")
+  doctorAppointments  Appointment[]      @relation("AppointmentDoctor")
+  availabilitySlots   DoctorAvailability[]
+
+  @@map("users")
+}
+
+model DoctorAvailability {
+  id             String        @id @default(uuid()) @db.Uuid
+  doctorId       String        @db.Uuid @map("doctor_id")
+  date           DateTime      @db.Date
+  startTime      String        @map("start_time")
+  endTime        String        @map("end_time")
+  price          Decimal       @default(0) @db.Decimal(10, 2)
+  maxPatients    Int           @default(1) @map("max_patients")
+  bookedCount    Int           @default(0) @map("booked_count")
+  isBooked       Boolean       @default(false) @map("is_booked")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  doctor         User          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  appointments   Appointment[]
+
+  @@unique([doctorId, date, startTime], map: "doctor_availability_doctor_date_start_time_key")
+  @@index([doctorId, date], map: "doctor_availability_doctor_date_idx")
+  @@map("doctor_availability")
+}
+
+model Appointment {
+  id                String                   @id @default(uuid()) @db.Uuid
+  patientId         String                   @db.Uuid @map("patient_id")
+  doctorId          String                   @db.Uuid @map("doctor_id")
+  availabilitySlotId String?                 @db.Uuid @map("availability_slot_id")
+  appointmentDate   DateTime                 @map("appointment_date")
+  status            AppointmentStatus        @default(pending)
+  paymentStatus     AppointmentPaymentStatus @default(pending) @map("payment_status")
+  paymentIntentId   String?                  @unique @map("payment_intent_id")
+  amountPaid        Decimal                  @default(0) @db.Decimal(10, 2) @map("amount_paid")
+  paymentCurrency   String                   @default("usd") @map("payment_currency")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+  patient           User                     @relation("AppointmentPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor            User                     @relation("AppointmentDoctor", fields: [doctorId], references: [id], onDelete: Cascade)
+  availabilitySlot  DoctorAvailability?      @relation(fields: [availabilitySlotId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, appointmentDate], map: "appointments_patient_appointment_date_idx")
+  @@index([doctorId, appointmentDate], map: "appointments_doctor_appointment_date_idx")
+  @@index([status, appointmentDate], map: "appointments_status_appointment_date_idx")
+  @@map("appointments")
+}

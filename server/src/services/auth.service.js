@@ -1,4 +1,4 @@
-import { createUser, findUserByEmail } from "./user.service.js";
+import { compareUserPassword, createUser, findUserByEmail } from "./user.service.js";
 import { generateToken } from "../utils/jwt.js";
 import AppError from "../utils/appError.js";
 
@@ -29,7 +29,7 @@ export const loginService = async ({ email, password }) => {
     throw new AppError("Account is deactivated", 403, "ACCOUNT_DEACTIVATED");
   }
 
-  const isMatched = await user.comparePassword(password);
+  const isMatched = await compareUserPassword(user, password);
 
   if (!isMatched) {
     throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");

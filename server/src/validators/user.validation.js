@@ -1,5 +1,6 @@
 import Joi from "joi";
 import { ROLES } from "../constants/roles.js";
+import { createProviderAwareIdSchema } from "./uuid.validation.js";
 
 const optionalProfileFields = {
   phone: Joi.string().max(30).optional().allow(""),
@@ -103,13 +104,7 @@ export const validateAdminUpdateUser = Joi.object({
 }).min(1);
 
 export const validateMongoIdParam = Joi.object({
-  id: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      "string.pattern.base": "Invalid user ID format",
-      "string.empty": "User ID is required"
-    })
+  id: createProviderAwareIdSchema("Invalid user ID format", "User ID is required")
 });
 
 export const validateUserListQuery = Joi.object({

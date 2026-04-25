@@ -1,4 +1,5 @@
 import Joi from "joi";
+import { createProviderAwareIdSchema } from "./uuid.validation.js";
 
 export const validateAvailabilityQuery = Joi.object({
   date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().messages({
@@ -7,10 +8,7 @@ export const validateAvailabilityQuery = Joi.object({
 });
 
 export const validateDoctorAvailabilityLookup = Joi.object({
-  doctorId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
-    "string.pattern.base": "Invalid doctor ID format",
-    "string.empty": "Doctor ID is required"
-  }),
+  doctorId: createProviderAwareIdSchema("Invalid doctor ID format", "Doctor ID is required"),
   date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required().messages({
     "string.pattern.base": "Date must be in YYYY-MM-DD format",
     "string.empty": "Date is required"
@@ -44,8 +42,5 @@ export const validateCreateAvailability = Joi.object({
 });
 
 export const validateAvailabilityIdParam = Joi.object({
-  id: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required().messages({
-    "string.pattern.base": "Invalid availability slot ID format",
-    "string.empty": "Availability slot ID is required"
-  })
+  id: createProviderAwareIdSchema("Invalid availability slot ID format", "Availability slot ID is required")
 });

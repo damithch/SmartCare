@@ -95,3 +95,16 @@ The backend in this repository is currently structured with:
 ## Goal
 
 The goal of SmartCare is to provide a centralized hospital management system where different users can securely access the features relevant to their role.
+
+## PostgreSQL Migration
+
+The backend currently runs on MongoDB with Mongoose, but PostgreSQL migration scaffolding has now been added under `server/prisma/`.
+
+Current PostgreSQL migration assets:
+
+- `server/prisma/schema.prisma`
+- `server/src/config/prisma.js`
+- `server/.env.example`
+- `server/POSTGRES_MIGRATION.md`
+
+The migration is staged. The app still runs on MongoDB until the service layer is moved module by module.

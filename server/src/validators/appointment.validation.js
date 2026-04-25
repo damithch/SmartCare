@@ -1,20 +1,9 @@
 import Joi from "joi";
+import { createProviderAwareIdSchema } from "./uuid.validation.js";
 
 export const validateCreateAppointment = Joi.object({
-  patientId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      "string.pattern.base": "Invalid patient ID format",
-      "string.empty": "Patient ID is required"
-    }),
-  doctorId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      "string.pattern.base": "Invalid doctor ID format",
-      "string.empty": "Doctor ID is required"
-    }),
+  patientId: createProviderAwareIdSchema("Invalid patient ID format", "Patient ID is required"),
+  doctorId: createProviderAwareIdSchema("Invalid doctor ID format", "Doctor ID is required"),
   appointmentDate: Joi.date()
     .iso()
     .min("now")
@@ -23,48 +12,23 @@ export const validateCreateAppointment = Joi.object({
       "date.base": "Invalid date format",
       "date.min": "Appointment date cannot be in the past"
     }),
-  availabilityId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .optional()
-    .messages({
-      "string.pattern.base": "Invalid availability slot ID format"
-    })
+  availabilityId: createProviderAwareIdSchema(
+    "Invalid availability slot ID format",
+    "Availability slot ID is required",
+    { required: false }
+  )
 }).or("appointmentDate", "availabilityId");
 
 export const validateAppointmentCheckout = Joi.object({
-  patientId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      "string.pattern.base": "Invalid patient ID format",
-      "string.empty": "Patient ID is required"
-    }),
-  doctorId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      "string.pattern.base": "Invalid doctor ID format",
-      "string.empty": "Doctor ID is required"
-    }),
-  availabilityId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      "string.pattern.base": "Invalid availability slot ID format",
-      "string.empty": "Availability slot ID is required"
-    })
+  patientId: createProviderAwareIdSchema("Invalid patient ID format", "Patient ID is required"),
+  doctorId: createProviderAwareIdSchema("Invalid doctor ID format", "Doctor ID is required"),
+  availabilityId: createProviderAwareIdSchema("Invalid availability slot ID format", "Availability slot ID is required")
 });
 
 export const validateConfirmAppointmentPayment = Joi.object({
-  patientId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .required(),
-  doctorId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .required(),
-  availabilityId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .required(),
+  patientId: createProviderAwareIdSchema("Invalid patient ID format", "Patient ID is required"),
+  doctorId: createProviderAwareIdSchema("Invalid doctor ID format", "Doctor ID is required"),
+  availabilityId: createProviderAwareIdSchema("Invalid availability slot ID format", "Availability slot ID is required"),
   paymentIntentId: Joi.string().required().messages({
     "string.empty": "Payment intent ID is required"
   })
@@ -108,12 +72,8 @@ export const validateAppointmentQuery = Joi.object({
   status: Joi.string()
     .valid("pending", "approved", "rejected", "completed", "cancelled")
     .optional(),
-  doctorId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .optional(),
-  patientId: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .optional(),
+  doctorId: createProviderAwareIdSchema("Invalid doctor ID format", "Doctor ID is required", { required: false }),
+  patientId: createProviderAwareIdSchema("Invalid patient ID format", "Patient ID is required", { required: false }),
   sortBy: Joi.string()
     .valid("appointmentDate", "createdAt", "updatedAt")
     .optional(),
@@ -123,11 +83,5 @@ export const validateAppointmentQuery = Joi.object({
 });
 
 export const validateMongoIdParam = Joi.object({
-  id: Joi.string()
-    .regex(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      "string.pattern.base": "Invalid appointment ID format",
-      "string.empty": "Appointment ID is required"
-    })
+  id: createProviderAwareIdSchema("Invalid appointment ID format", "Appointment ID is required")
 });

@@ -1,5 +1,20 @@
+import prisma from "../config/prisma.js";
 import DoctorAvailability from "../models/doctorAvailability.model.js";
 import AppError from "../utils/appError.js";
+
+const isPostgresProvider = () => process.env.DATABASE_PROVIDER === "postgres";
+
+const formatDateOnly = (value) => {
+  if (!value) return value;
+  if (typeof value === "string") return value;
+  return value.toISOString().slice(0, 10);
+};
+
+const toNumber = (value) => {
+  if (typeof value === "number") return value;
+  if (value == null) return value;
+  return Number(value);
+};
 
 const normalizeTime = (value) => {
   if (!value || !/^\d{2}:\d{2}$/.test(value)) {
@@ -46,6 +61,9 @@ const decorateSlot = (slot) => {
 
   return {
     ...plainSlot,
+    _id: plainSlot._id ?? plainSlot.id,
+    date: formatDateOnly(plainSlot.date),
+    price: toNumber(plainSlot.price ?? 0),
     maxPatients,
     bookedCount,
     availableSpots: Math.max(maxPatients - bookedCount, 0),
@@ -54,6 +72,23 @@ const decorateSlot = (slot) => {
 };
 
 export const listDoctorAvailability = async (doctorId, date) => {
+  if (isPostgresProvider()) {
+    const where = {
+      doctorId
+    };
+
+    if (date) {
+      where.date = new Date(`${date}T00:00:00.000Z`);
+    }
+
+    const slots = await prisma.doctorAvailability.findMany({
+      where,
+      orderBy: [{ date: "asc" }, { startTime: "asc" }]
+    });
+
+    return slots.map(decorateSlot);
+  }
+
   const query = { doctor: doctorId };
 
   if (date) {
@@ -65,6 +100,20 @@ export const listDoctorAvailability = async (doctorId, date) => {
 };
 
 export const listAvailabilityForDoctor = async (doctorId, date) => {
+  if (isPostgresProvider()) {
+    const slots = await prisma.doctorAvailability.findMany({
+      where: {
+        doctorId,
+        date: new Date(`${date}T00:00:00.000Z`)
+      },
+      orderBy: { startTime: "asc" }
+    });
+
+    return slots
+      .filter((slot) => (slot.bookedCount || 0) < (slot.maxPatients || 1))
+      .map(decorateSlot);
+  }
+
   const slots = await DoctorAvailability.find({
     doctor: doctorId,
     date,
@@ -74,7 +123,17 @@ export const listAvailabilityForDoctor = async (doctorId, date) => {
   return slots.map(decorateSlot);
 };
 
-export const getAvailabilitySlotById = (slotId) => DoctorAvailability.findById(slotId);
+export const getAvailabilitySlotById = async (slotId) => {
+  if (isPostgresProvider()) {
+    const slot = await prisma.doctorAvailability.findUnique({
+      where: { id: slotId }
+    });
+
+    return decorateSlot(slot);
+  }
+
+  return DoctorAvailability.findById(slotId);
+};
 
 export const createDoctorAvailability = async (doctorId, { date, startTime, endTime, price, maxPatients }) => {
   const normalizedStartTime = normalizeTime(startTime);
@@ -82,6 +141,38 @@ export const createDoctorAvailability = async (doctorId, { date, startTime, endT
   const normalizedPrice = normalizePrice(price);
   const normalizedMaxPatients = normalizeMaxPatients(maxPatients);
   validateRange(normalizedStartTime, normalizedEndTime);
+
+  if (isPostgresProvider()) {
+    const slotDate = new Date(`${date}T00:00:00.000Z`);
+
+    const existingSlot = await prisma.doctorAvailability.findFirst({
+      where: {
+        doctorId,
+        date: slotDate,
+        startTime: { lt: normalizedEndTime },
+        endTime: { gt: normalizedStartTime }
+      }
+    });
+
+    if (existingSlot) {
+      throw new AppError("This time overlaps with an existing slot", 409, "SLOT_OVERLAP");
+    }
+
+    const slot = await prisma.doctorAvailability.create({
+      data: {
+        doctorId,
+        date: slotDate,
+        startTime: normalizedStartTime,
+        endTime: normalizedEndTime,
+        price: normalizedPrice,
+        maxPatients: normalizedMaxPatients,
+        bookedCount: 0,
+        isBooked: false
+      }
+    });
+
+    return decorateSlot(slot);
+  }
 
   const existingSlot = await DoctorAvailability.findOne({
     doctor: doctorId,
@@ -113,6 +204,29 @@ export const createDoctorAvailability = async (doctorId, { date, startTime, endT
 };
 
 export const deleteDoctorAvailability = async (doctorId, slotId) => {
+  if (isPostgresProvider()) {
+    const slot = await prisma.doctorAvailability.findFirst({
+      where: {
+        id: slotId,
+        doctorId
+      }
+    });
+
+    if (!slot) {
+      throw new AppError("Availability slot not found", 404, "SLOT_NOT_FOUND");
+    }
+
+    if ((slot.bookedCount || 0) > 0 || slot.isBooked) {
+      throw new AppError("Booked slots cannot be deleted", 400, "BOOKED_SLOT");
+    }
+
+    await prisma.doctorAvailability.delete({
+      where: { id: slotId }
+    });
+
+    return decorateSlot(slot);
+  }
+
   const slot = await DoctorAvailability.findOne({ _id: slotId, doctor: doctorId });
 
   if (!slot) {

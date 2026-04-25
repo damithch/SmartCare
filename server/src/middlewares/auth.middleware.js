@@ -1,6 +1,6 @@
 import "dotenv/config";
 import jwt from "jsonwebtoken";
-import User from "../models/user.model.js";
+import { getUserById } from "../services/user.service.js";
 import AppError from "../utils/appError.js";
 
 const jwtSecret = process.env.JWT_SECRET || "change_this_secret";
@@ -17,7 +17,7 @@ export const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, jwtSecret);
-    const user = await User.findById(decoded.id).select("-password");
+    const user = await getUserById(decoded.id);
 
     if (!user) {
       return next(new AppError("Invalid token user", 401, "UNAUTHORIZED"));

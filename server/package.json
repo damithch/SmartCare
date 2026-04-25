@@ -7,14 +7,19 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "node --test --experimental-test-isolation=none tests/**/*.test.js",
-    "test:unit": "node --test --experimental-test-isolation=none tests/unit/**/*.test.js",
-    "test:integration": "node --test --experimental-test-isolation=none tests/integration/**/*.test.js",
+    "db:seed:postgres": "node scripts/seed-postgres.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "test": "set DATABASE_PROVIDER=mongo&& node --test --experimental-test-isolation=none tests/**/*.test.js",
+    "test:unit": "set DATABASE_PROVIDER=mongo&& node --test --experimental-test-isolation=none tests/unit/**/*.test.js",
+    "test:integration": "set DATABASE_PROVIDER=mongo&& node --test --experimental-test-isolation=none tests/integration/**/*.test.js",
     "test:jest": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "test:jest:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "lint": "echo \"Add eslint config\""
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -23,11 +28,13 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.6.1",
     "morgan": "^1.10.0",
+    "pg": "^8.20.0",
     "stripe": "^20.4.1"
   },
   "devDependencies": {
     "jest": "^30.2.0",
     "nodemon": "^3.1.4",
+    "prisma": "^7.8.0",
     "supertest": "^7.2.2"
   }
 }
