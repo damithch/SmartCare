@@ -6,6 +6,7 @@ import { fetchMyBills, payBill } from '../../services/auth';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { toast } from 'react-hot-toast';
 
 const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
 
@@ -88,8 +89,10 @@ export const MedicinePayments = () => {
         current.map((item) => item._id === bill._id ? { ...item, status: 'paid', amountDue: 0 } : item)
       );
       setSuccessMessage(`Medicine bill ${bill.billNumber} paid successfully.`);
+      toast.success(`Medicine bill ${bill.billNumber} paid successfully.`);
     } catch (err) {
       setError(err.message || 'Failed to pay medicine bill');
+      toast.error(err.message || 'Failed to pay medicine bill');
     } finally {
       setActiveBillId('');
     }

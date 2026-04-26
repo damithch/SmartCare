@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AppProvider, getRoleLandingPath, useAppContext } from './context/AppContext';
 import { TopBar as HomeTopBar } from './components/Home/TopBar';
 import { Navbar as HomeNavbar } from './components/Home/Navbar';
@@ -99,6 +100,7 @@ export function App() {
   return (
     <BrowserRouter>
       <AppProvider>
+        <Toaster position="top-right" />
         <AppShell />
       </AppProvider>
     </BrowserRouter>

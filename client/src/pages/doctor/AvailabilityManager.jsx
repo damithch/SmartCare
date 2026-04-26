@@ -21,6 +21,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
+import { toast } from 'react-hot-toast';
 
 const getToday = () => new Date().toISOString().split('T')[0];
 
@@ -101,8 +102,10 @@ export const AvailabilityManager = () => {
       });
 
       setSlots((current) => [...current, createdSlot]);
+      toast.success('Slot added successfully');
     } catch (err) {
       setError(err.message || 'Failed to create slot');
+      toast.error(err.message || 'Failed to create slot');
     } finally {
       setIsSaving(false);
     }
@@ -114,8 +117,10 @@ export const AvailabilityManager = () => {
     try {
       await deleteMyAvailability(token, id);
       setSlots((current) => current.filter((slot) => slot._id !== id));
+      toast.success('Slot deleted successfully');
     } catch (err) {
       setError(err.message || 'Failed to delete slot');
+      toast.error(err.message || 'Failed to delete slot');
     }
   };
 

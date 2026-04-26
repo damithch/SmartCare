@@ -27,6 +27,7 @@ import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
+import { toast } from 'react-hot-toast';
 
 const getToday = () => new Date().toISOString().split('T')[0];
 const safeLoadStripe = (publishableKey) => {
@@ -144,8 +145,10 @@ const AppointmentPaymentForm = ({
       });
 
       onSuccess(appointment);
+      toast.success('Payment successful and appointment confirmed!');
     } catch (error) {
       setPaymentError(error.message || 'Payment failed');
+      toast.error(error.message || 'Payment failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -412,6 +415,7 @@ export const AppointmentBooking = () => {
       setStep(3);
     } catch (err) {
       setBookingError(err.message || 'Failed to initialize payment');
+      toast.error(err.message || 'Failed to initialize payment');
     } finally {
       setIsPreparingPayment(false);
     }

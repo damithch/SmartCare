@@ -13,6 +13,7 @@ import { Input } from '../../components/ui/Input';
 import { useAppContext } from '../../context/AppContext';
 import { loginUser } from '../../services/auth';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 export const LoginPage = () => {
   const { login, navigate } = useAppContext();
@@ -33,8 +34,10 @@ export const LoginPage = () => {
         password
       });
       login(session);
+      toast.success('Successfully logged in!');
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || 'Failed to login');
     } finally {
       setIsLoading(false);
     }

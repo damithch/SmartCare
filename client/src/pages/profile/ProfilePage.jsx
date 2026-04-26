@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { fetchMyProfile, updateMyProfile } from '../../services/auth';
+import { toast } from 'react-hot-toast';
 
 const getProfileState = (user) => ({
   fullName: user?.fullName || user?.name || '',
@@ -35,7 +36,6 @@ export const ProfilePage = () => {
   const { user, token, updateUser } = useAppContext();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [showToast, setShowToast] = useState(false);
   const [error, setError] = useState('');
   const [securityError, setSecurityError] = useState('');
   const [formData, setFormData] = useState(getProfileState(user));
@@ -66,6 +66,7 @@ export const ProfilePage = () => {
       } catch (err) {
         if (isMounted) {
           setError(err.message);
+          toast.error(err.message || 'Failed to load profile');
         }
       } finally {
         if (isMounted) {
@@ -102,11 +103,13 @@ export const ProfilePage = () => {
 
     if (!file.type.startsWith('image/')) {
       setError('Please choose an image file.');
+      toast.error('Please choose an image file.');
       return;
     }
 
     if (file.size > 4 * 1024 * 1024) {
       setError('Image must be 4MB or smaller.');
+      toast.error('Image must be 4MB or smaller.');
       return;
     }
 
@@ -119,12 +122,8 @@ export const ProfilePage = () => {
       setError('');
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || 'Failed to update image');
     }
-  };
-
-  const showSuccessToast = () => {
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
   };
 
   const handleSave = async (e) => {
@@ -154,9 +153,10 @@ export const ProfilePage = () => {
         ...current,
         ...getProfileState(updatedProfile)
       }));
-      showSuccessToast();
+      toast.success('Profile updated successfully');
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || 'Failed to update profile');
     } finally {
       setIsSaving(false);
     }
@@ -169,12 +169,14 @@ export const ProfilePage = () => {
 
     if (!formData.password || !formData.confirmPassword) {
       setSecurityError('Enter and confirm the new password.');
+      toast.error('Enter and confirm the new password.');
       setIsSaving(false);
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
       setSecurityError('Passwords do not match.');
+      toast.error('Passwords do not match.');
       setIsSaving(false);
       return;
     }
@@ -189,9 +191,10 @@ export const ProfilePage = () => {
         password: '',
         confirmPassword: ''
       }));
-      showSuccessToast();
+      toast.success('Password updated successfully');
     } catch (err) {
       setSecurityError(err.message);
+      toast.error(err.message || 'Failed to update password');
     } finally {
       setIsSaving(false);
     }
@@ -199,27 +202,6 @@ export const ProfilePage = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {showToast &&
-      <motion.div
-        initial={{
-          opacity: 0,
-          y: -50
-        }}
-        animate={{
-          opacity: 1,
-          y: 0
-        }}
-        exit={{
-          opacity: 0,
-          y: -50
-        }}
-        className="fixed top-20 right-8 bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center">
-
-          <SaveIcon className="w-5 h-5 mr-2" />
-          Profile updated successfully
-        </motion.div>
-      }
-
       <Card className="p-6 sm:p-8 relative overflow-hidden">
         <div
           className="absolute top-0 left-0 w-full h-40 bg-gradient-to-r from-blue-500 to-teal-400 bg-cover bg-center"

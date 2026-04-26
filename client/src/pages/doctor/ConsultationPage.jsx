@@ -34,6 +34,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
+import { toast } from 'react-hot-toast';
 
 const frequencyOptions = [
   { value: 'Once daily', label: 'Once daily' },
@@ -255,8 +256,10 @@ export const ConsultationPage = () => {
         return remainingAppointments;
       });
       setSuccessMessage('Consultation saved and appointment marked as completed.');
+      toast.success('Consultation saved and appointment marked as completed.');
     } catch (err) {
       setError(err.message || 'Failed to save consultation');
+      toast.error(err.message || 'Failed to save consultation');
     } finally {
       setIsSaving(false);
     }

@@ -15,6 +15,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
+import { toast } from 'react-hot-toast';
 
 const CATEGORY_OPTIONS = [
   'Antibiotic',
@@ -200,8 +201,10 @@ export const InventoryPage = () => {
       setMedicines((current) => [createdMedicine, ...current]);
       setForm(createInitialForm());
       setIsAddModalOpen(false);
+      toast.success('Medicine added successfully');
     } catch (err) {
       setError(err.message || 'Failed to add medicine');
+      toast.error(err.message || 'Failed to add medicine');
     } finally {
       setIsSaving(false);
     }

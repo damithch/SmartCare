@@ -7,6 +7,7 @@ const Refund = createJsonModel("Refund", {
   },
   refs: {
     payment: "Payment",
+    appointment: "Appointment",
     bill: "Bill",
     patient: "User",
     approvedBy: "User",

@@ -15,6 +15,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useAppContext } from '../../context/AppContext';
 import { registerUser } from '../../services/auth';
+import { toast } from 'react-hot-toast';
 
 const roleOptions = [
   { value: 'patient', label: 'Patient' },
@@ -54,8 +55,10 @@ export const RegisterPage = () => {
         role: formData.role
       });
       login(session);
+      toast.success('Successfully registered!');
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || 'Registration failed');
     } finally {
       setIsLoading(false);
     }

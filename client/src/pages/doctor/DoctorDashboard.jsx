@@ -18,6 +18,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
+import { toast } from 'react-hot-toast';
 
 const Sparkline = ({ data, color, className }) => {
   const safeData = Array.isArray(data) && data.length > 1 ? data : [0, 0];
@@ -314,8 +315,10 @@ export const DoctorDashboard = () => {
       setAppointments((current) =>
         current.map((appointment) => (appointment._id === appointmentId ? updatedAppointment : appointment))
       );
+      toast.success(`Appointment ${nextStatus} successfully`);
     } catch (err) {
       setError(err.message || 'Failed to update appointment');
+      toast.error(err.message || 'Failed to update appointment');
     } finally {
       setActiveAppointmentId('');
     }

@@ -1,6 +1,7 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import AppError from "../utils/appError.js";
 import * as medicineService from "../services/medicine.service.js";
+import { getIO } from "../socket.js";
 
 export const addMedicine = asyncHandler(async (req, res) => {
   const {
@@ -37,6 +38,12 @@ export const addMedicine = asyncHandler(async (req, res) => {
     },
     req.user._id
   );
+
+  const io = getIO();
+  io.emit('notification', {
+    type: 'success',
+    message: `New medicine added: ${medicine.name}`
+  });
 
   res.status(201).json({
     success: true,
@@ -104,6 +111,12 @@ export const updateStock = asyncHandler(async (req, res) => {
     { quantityChange, reason, notes },
     req.user._id
   );
+
+  const io = getIO();
+  io.emit('notification', {
+    type: 'success',
+    message: `Stock updated for medicine`
+  });
 
   res.status(200).json({
     success: true,

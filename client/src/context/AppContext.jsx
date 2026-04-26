@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import toast from 'react-hot-toast';
 
 const AppContext = createContext(null);
 const AUTH_STORAGE_KEY = 'smartcare.auth';
@@ -56,6 +58,7 @@ export const AppProvider = ({ children }) => {
   const storedSession = getStoredSession();
   const [user, setUser] = useState(storedSession?.user || null);
   const [token, setToken] = useState(storedSession?.token || null);
+  const [socket, setSocket] = useState(null);
   
   const routerNavigate = useNavigate();
   const location = useLocation();
@@ -63,12 +66,39 @@ export const AppProvider = ({ children }) => {
   const currentPage = location.pathname === '/' ? 'home' : location.pathname.substring(1);
 
   useEffect(() => {
+    let newSocket = null;
+
     if (user && token) {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user, token }));
-      return;
+      
+      const socketUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
+      newSocket = io(socketUrl);
+      
+      newSocket.on('connect', () => {
+        newSocket.emit('join-room', user.role); 
+        newSocket.emit('join-room', user.id); 
+      });
+
+      newSocket.on('notification', (data) => {
+        if (data.type === 'success') toast.success(data.message);
+        else if (data.type === 'error') toast.error(data.message);
+        else toast(data.message, { icon: '🔔' });
+      });
+
+      setSocket(newSocket);
+    } else {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
+      }
     }
 
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return () => {
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+    };
   }, [token, user]);
 
   const login = (session) => {
@@ -81,6 +111,10 @@ export const AppProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
+    if (socket) {
+      socket.disconnect();
+      setSocket(null);
+    }
     routerNavigate('/');
   };
 
@@ -105,7 +139,8 @@ export const AppProvider = ({ children }) => {
         logout,
         updateUser,
         currentPage,
-        navigate
+        navigate,
+        socket
       }}>
       {children}
     </AppContext.Provider>

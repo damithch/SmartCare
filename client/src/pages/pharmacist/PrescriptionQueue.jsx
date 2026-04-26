@@ -14,6 +14,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { toast } from 'react-hot-toast';
 
 export const PrescriptionQueue = () => {
   const { user, token } = useAppContext();
@@ -145,8 +146,10 @@ export const PrescriptionQueue = () => {
         setIsModalOpen(false);
         setSelectedRx(null);
       }
+      toast.success(`Prescription marked as ${status}`);
     } catch (err) {
       setError(err.message || 'Failed to update prescription');
+      toast.error(err.message || 'Failed to update prescription');
     } finally {
       if (status === 'dispensed') {
         setIsDispensing(false);

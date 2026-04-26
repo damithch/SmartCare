@@ -1,5 +1,6 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import * as appointmentService from "../services/appointment.service.js";
+import { getIO } from "../socket.js";
 
 export const createAppointment = asyncHandler(async (req, res) => {
   const { patientId, doctorId, appointmentDate, availabilityId } = req.body;
@@ -9,6 +10,12 @@ export const createAppointment = asyncHandler(async (req, res) => {
     req.user._id,
     req.user.role
   );
+
+  const io = getIO();
+  io.emit('notification', {
+    type: 'success',
+    message: `New appointment created`
+  });
 
   res.status(201).json({
     success: true,
@@ -46,6 +53,12 @@ export const confirmAppointmentPayment = asyncHandler(async (req, res) => {
     req.user._id,
     req.user.role
   );
+
+  const io = getIO();
+  io.emit('notification', {
+    type: 'success',
+    message: `New appointment booked and paid`
+  });
 
   res.status(201).json({
     success: true,
@@ -127,6 +140,12 @@ export const updateAppointment = asyncHandler(async (req, res) => {
     req.user.role
   );
 
+  const io = getIO();
+  io.emit('notification', {
+    type: 'success',
+    message: `Appointment status updated to ${status || 'new status'}`
+  });
+
   res.status(200).json({
     success: true,
     message: "Appointment updated successfully",
@@ -142,6 +161,12 @@ export const cancelAppointment = asyncHandler(async (req, res) => {
     req.user._id,
     req.user.role
   );
+
+  const io = getIO();
+  io.emit('notification', {
+    type: 'warning',
+    message: `Appointment cancelled`
+  });
 
   res.status(200).json({
     success: true,

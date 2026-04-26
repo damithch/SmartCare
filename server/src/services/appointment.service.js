@@ -4,6 +4,7 @@ import User from "../models/user.model.js";
 import AppError from "../utils/appError.js";
 import { ROLES } from "../constants/roles.js";
 import DoctorAvailability from "../models/doctorAvailability.model.js";
+import Refund from "../models/refund.model.js";
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-02-24.acacia" })
@@ -42,6 +43,70 @@ const ensureStripe = () => {
   }
 
   return stripe;
+};
+
+const createStripeAppointmentRefund = async (appointment, processedBy) => {
+  if (appointment.paymentStatus !== "paid" || !appointment.paymentIntentId || Number(appointment.amountPaid || 0) <= 0) {
+    return null;
+  }
+
+  const existingRefund = await Refund.findOne({
+    appointment: appointment._id,
+    refundReason: "doctor_rejected_appointment",
+    status: { $nin: ["failed", "declined", "cancelled"] }
+  });
+
+  if (existingRefund) {
+    appointment.paymentStatus = existingRefund.status === "completed" ? "refunded" : "refund_pending";
+    appointment.refund = existingRefund._id;
+    appointment.refundId = existingRefund.stripeRefundId;
+    appointment.refundedAmount = existingRefund.refundAmount;
+    appointment.refundedAt = existingRefund.processedAt || existingRefund.updatedAt;
+    return existingRefund;
+  }
+
+  const stripeClient = ensureStripe();
+  const amount = Math.round(Number(appointment.amountPaid || 0) * 100);
+  const stripeRefund = await stripeClient.refunds.create(
+    {
+      payment_intent: appointment.paymentIntentId,
+      amount,
+      reason: "requested_by_customer",
+      metadata: {
+        appointmentId: String(appointment._id),
+        patientId: String(appointment.patient),
+        doctorId: String(appointment.doctor),
+        reason: "doctor_rejected_appointment"
+      }
+    },
+    {
+      idempotencyKey: `appointment-rejection-refund-${appointment._id}`
+    }
+  );
+
+  const isCompleted = stripeRefund.status === "succeeded";
+  const refund = await Refund.create({
+    appointment: appointment._id,
+    patient: appointment.patient,
+    originalPaymentAmount: appointment.amountPaid,
+    refundAmount: Number((amount / 100).toFixed(2)),
+    refundReason: "doctor_rejected_appointment",
+    refundReasonDetails: "Automatic refund because the doctor rejected the appointment.",
+    refundMethod: "stripe",
+    stripeRefundId: stripeRefund.id,
+    stripePaymentIntentId: appointment.paymentIntentId,
+    status: isCompleted ? "completed" : "processing",
+    processedBy,
+    processedAt: new Date().toISOString()
+  });
+
+  appointment.paymentStatus = isCompleted ? "refunded" : "refund_pending";
+  appointment.refund = refund._id;
+  appointment.refundId = stripeRefund.id;
+  appointment.refundedAmount = refund.refundAmount;
+  appointment.refundedAt = refund.processedAt;
+
+  return refund;
 };
 
 const decorateSlot = (slot) => {
@@ -478,6 +543,7 @@ export const updateAppointment = async (appointmentId, { appointmentDate, status
       status === APPOINTMENT_STATUS.REJECTED &&
       [APPOINTMENT_STATUS.PENDING, APPOINTMENT_STATUS.APPROVED].includes(appointment.status)
     ) {
+      await createStripeAppointmentRefund(appointment, userId);
       await releaseAppointmentSlotCapacity(appointment);
     }
 

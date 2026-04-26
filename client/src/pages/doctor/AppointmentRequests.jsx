@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
+import { toast } from 'react-hot-toast';
 
 const formatDateTime = (value) => {
   const date = new Date(value);
@@ -87,8 +88,10 @@ export const AppointmentRequests = () => {
       setAppointments((current) =>
         current.map((appointment) => (appointment._id === appointmentId ? updatedAppointment : appointment))
       );
+      toast.success(`Appointment ${nextStatus} successfully`);
     } catch (err) {
       setError(err.message || 'Failed to update appointment');
+      toast.error(err.message || 'Failed to update appointment');
     } finally {
       setActiveAppointmentId('');
     }

@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useAppContext } from '../../context/AppContext';
 import { fetchMyAppointments, updateAppointment } from '../../services/auth';
+import { toast } from 'react-hot-toast';
 
 const startOfWeek = (date) => {
   const copy = new Date(date);
@@ -147,8 +148,10 @@ export const MySchedule = () => {
       setAppointments((current) =>
         current.map((appointment) => (appointment._id === appointmentId ? updatedAppointment : appointment))
       );
+      toast.success(`Appointment ${nextStatus} successfully`);
     } catch (err) {
       setError(err.message || 'Failed to update appointment');
+      toast.error(err.message || 'Failed to update appointment');
     } finally {
       setActiveAppointmentId('');
     }

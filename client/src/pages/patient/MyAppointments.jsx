@@ -40,6 +40,7 @@ const getPaymentColor = (status) => {
     case 'failed':
       return 'danger';
     case 'refunded':
+    case 'refund_pending':
       return 'warning';
     default:
       return 'default';
@@ -52,6 +53,14 @@ const getStatusLabel = (status) => {
   }
 
   return status;
+};
+
+const getPaymentLabel = (status) => {
+  if (status === 'refund_pending') {
+    return 'refund pending';
+  }
+
+  return status || 'pending';
 };
 
 export const MyAppointments = () => {
@@ -198,7 +207,7 @@ export const MyAppointments = () => {
                             {getStatusLabel(appointment.status)}
                           </Badge>
                           <Badge variant={getPaymentColor(appointment.paymentStatus)} className="capitalize">
-                            {appointment.paymentStatus || 'pending'}
+                            {getPaymentLabel(appointment.paymentStatus)}
                           </Badge>
                         </div>
                       </div>
