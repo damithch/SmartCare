@@ -11,8 +11,10 @@ import {
   PillIcon,
   PackageIcon,
   ActivityIcon,
-  HeartPulseIcon } from
-'lucide-react';
+  HeartPulseIcon,
+  UserCogIcon
+} from
+  'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { Avatar } from '../ui/Avatar';
 
@@ -36,100 +38,115 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
   if (!user) return null;
   const displayName = user.fullName || user.name || 'User';
   const patientLinks = [
-  {
-    name: 'Dashboard',
-    icon: LayoutDashboardIcon,
-    page: 'patient-dashboard',
-    section: 'MAIN MENU'
-  },
-  {
-    name: 'Book Appointment',
-    icon: CalendarIcon,
-    page: 'book-appointment',
-    section: 'MAIN MENU'
-  },
-  {
-    name: 'My Appointments',
-    icon: ClockIcon,
-    page: 'my-appointments',
-    section: 'RECORDS'
-  },
-  {
-    name: 'Medical History',
-    icon: FileTextIcon,
-    page: 'medical-history',
-    section: 'RECORDS'
-  },
-  {
-    name: 'Medicine Payments',
-    icon: PillIcon,
-    page: 'medicine-payments',
-    section: 'RECORDS'
-  }];
+    {
+      name: 'Dashboard',
+      icon: LayoutDashboardIcon,
+      page: 'patient-dashboard',
+      section: 'MAIN MENU'
+    },
+    {
+      name: 'Book Appointment',
+      icon: CalendarIcon,
+      page: 'book-appointment',
+      section: 'MAIN MENU'
+    },
+    {
+      name: 'My Appointments',
+      icon: ClockIcon,
+      page: 'my-appointments',
+      section: 'RECORDS'
+    },
+    {
+      name: 'Medical History',
+      icon: FileTextIcon,
+      page: 'medical-history',
+      section: 'RECORDS'
+    },
+    {
+      name: 'Medicine Payments',
+      icon: PillIcon,
+      page: 'medicine-payments',
+      section: 'RECORDS'
+    }];
 
   const doctorLinks = [
-  {
-    name: 'Dashboard',
-    icon: LayoutDashboardIcon,
-    page: 'doctor-dashboard',
-    section: 'MAIN MENU'
-  },
-  {
-    name: 'Approvals',
-    icon: CheckCircle2Icon,
-    page: 'approvals',
-    section: 'MANAGEMENT'
-  },
-  {
-    name: 'Appointment Management',
-    icon: CalendarIcon,
-    page: 'my-schedule',
-    section: 'MANAGEMENT'
-  },
-  {
-    name: 'Availability',
-    icon: ClockIcon,
-    page: 'availability',
-    section: 'MANAGEMENT'
-  },
-  {
-    name: 'Consultations',
-    icon: ActivityIcon,
-    page: 'consultations',
-    section: 'CLINICAL'
-  }];
+    {
+      name: 'Dashboard',
+      icon: LayoutDashboardIcon,
+      page: 'doctor-dashboard',
+      section: 'MAIN MENU'
+    },
+    {
+      name: 'Approvals',
+      icon: CheckCircle2Icon,
+      page: 'approvals',
+      section: 'MANAGEMENT'
+    },
+    {
+      name: 'Appointment Management',
+      icon: CalendarIcon,
+      page: 'my-schedule',
+      section: 'MANAGEMENT'
+    },
+    {
+      name: 'Availability',
+      icon: ClockIcon,
+      page: 'availability',
+      section: 'MANAGEMENT'
+    },
+    {
+      name: 'Consultations',
+      icon: ActivityIcon,
+      page: 'consultations',
+      section: 'CLINICAL'
+    }];
 
   const pharmacistLinks = [
-  {
-    name: 'Dashboard',
-    icon: LayoutDashboardIcon,
-    page: 'pharmacist-dashboard',
-    section: 'MAIN MENU'
-  },
-  {
-    name: 'Prescriptions',
-    icon: PillIcon,
-    page: 'prescriptions',
-    section: 'OPERATIONS'
-  },
-  {
-    name: 'Inventory',
-    icon: PackageIcon,
-    page: 'inventory',
-    section: 'OPERATIONS'
-  }];
+    {
+      name: 'Dashboard',
+      icon: LayoutDashboardIcon,
+      page: 'pharmacist-dashboard',
+      section: 'MAIN MENU'
+    },
+    {
+      name: 'Prescriptions',
+      icon: PillIcon,
+      page: 'prescriptions',
+      section: 'OPERATIONS'
+    },
+    {
+      name: 'Inventory',
+      icon: PackageIcon,
+      page: 'inventory',
+      section: 'OPERATIONS'
+    }];
+
+  const adminLinks = [
+    {
+      name: 'Admin Dashboard',
+      icon: LayoutDashboardIcon,
+      page: 'admin-dashboard',
+      section: 'MAIN MENU'
+    },
+    {
+      name: 'User Management',
+      icon: UserCogIcon,
+      page: 'user-management',
+      section: 'MANAGEMENT'
+    }];
 
   const studentLinks = [
-  {
-    name: 'My Profile',
-    icon: UserIcon,
-    page: 'profile',
-    section: 'ACCOUNT'
-  }];
+    {
+      name: 'My Profile',
+      icon: UserIcon,
+      page: 'profile',
+      section: 'ACCOUNT'
+    }];
 
   let links = patientLinks;
   if (user.role === 'doctor') links = doctorLinks;
   if (user.role === 'pharmacist') links = pharmacistLinks;
+  if (user.role === 'admin' || user.role === 'system_admin') links = adminLinks;
   if (user.role === 'student') links = studentLinks;
   const groupedLinks = links.reduce(
     (acc, link) => {
@@ -142,9 +159,9 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
   return (
     <>
       {isOpen &&
-      <div
-        className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-20 md:hidden"
-        onClick={() => setIsOpen(false)} />
+        <div
+          className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-20 md:hidden"
+          onClick={() => setIsOpen(false)} />
 
       }
 
@@ -171,45 +188,45 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
 
         <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-8 custom-scrollbar">
           {Object.entries(groupedLinks).map(([section, sectionLinks]) =>
-          <div key={section} className="space-y-2">
+            <div key={section} className="space-y-2">
               <h3 className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 {section}
               </h3>
               <div className="space-y-1">
                 {sectionLinks.map((link) => {
-                const isActive = currentPage === link.page;
-                const Icon = link.icon;
-                return (
-                  <button
-                    key={link.name}
-                    onClick={() => {
-                      navigate(link.page);
-                      if (window.innerWidth < 768) setIsOpen(false);
-                    }}
-                    className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 relative group ${isActive ? 'bg-white/10 text-white shadow-[inset_2px_0_0_0_rgba(96,165,250,1)]' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}`}>
+                  const isActive = currentPage === link.page;
+                  const Icon = link.icon;
+                  return (
+                    <button
+                      key={link.name}
+                      onClick={() => {
+                        navigate(link.page);
+                        if (window.innerWidth < 768) setIsOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 relative group ${isActive ? 'bg-white/10 text-white shadow-[inset_2px_0_0_0_rgba(96,165,250,1)]' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}`}>
 
                       <Icon
-                      className={`mr-3 h-5 w-5 shrink-0 transition-colors ${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                        className={`mr-3 h-5 w-5 shrink-0 transition-colors ${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
 
                       {link.name}
                       {isActive &&
-                    <motion.div
-                      layoutId="active-nav-glow"
-                      className="absolute left-0 w-1 h-full bg-blue-400 rounded-r-full shadow-[0_0_10px_rgba(96,165,250,0.8)]"
-                      initial={{
-                        opacity: 0
-                      }}
-                      animate={{
-                        opacity: 1
-                      }}
-                      exit={{
-                        opacity: 0
-                      }} />
+                        <motion.div
+                          layoutId="active-nav-glow"
+                          className="absolute left-0 w-1 h-full bg-blue-400 rounded-r-full shadow-[0_0_10px_rgba(96,165,250,0.8)]"
+                          initial={{
+                            opacity: 0
+                          }}
+                          animate={{
+                            opacity: 1
+                          }}
+                          exit={{
+                            opacity: 0
+                          }} />
 
-                    }
+                      }
                     </button>);
 
-              })}
+                })}
               </div>
             </div>
           )}

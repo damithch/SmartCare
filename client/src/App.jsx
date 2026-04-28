@@ -29,6 +29,7 @@ import { AppointmentRequests } from './pages/doctor/AppointmentRequests';
 import { PharmacistDashboard } from './pages/pharmacist/PharmacistDashboard';
 import { PrescriptionQueue } from './pages/pharmacist/PrescriptionQueue';
 import { InventoryPage } from './pages/pharmacist/InventoryPage';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { ProfilePage } from './pages/profile/ProfilePage';
 
 const HomePage = () => (
@@ -63,6 +64,8 @@ const pageComponents = {
   'pharmacist-dashboard': PharmacistDashboard,
   prescriptions: PrescriptionQueue,
   inventory: InventoryPage,
+  'admin-dashboard': AdminDashboard,
+  'user-management': AdminDashboard,
   profile: ProfilePage
 };
 
@@ -75,11 +78,11 @@ const AppShell = () => {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={user ? <Navigate to={dashboardPath} replace /> : <LoginPage />} />
       <Route path="/register" element={user ? <Navigate to={dashboardPath} replace /> : <RegisterPage />} />
-      
+
       {Object.entries(pageComponents).map(([path, Component]) => (
-        <Route 
-          key={path} 
-          path={`/${path}`} 
+        <Route
+          key={path}
+          path={`/${path}`}
           element={
             user ? (
               <DashboardLayout>
@@ -88,7 +91,7 @@ const AppShell = () => {
             ) : (
               <Navigate to="/login" replace />
             )
-          } 
+          }
         />
       ))}
       <Route path="*" element={<Navigate to="/" replace />} />

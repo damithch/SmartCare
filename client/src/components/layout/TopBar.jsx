@@ -36,6 +36,8 @@ export const TopBar = ({ toggleSidebar }) => {
       'pharmacist-dashboard': 'Pharmacist Dashboard',
       prescriptions: 'Prescription Queue',
       inventory: 'Inventory Management',
+      'admin-dashboard': 'Admin Dashboard',
+      'user-management': 'User Management',
       profile: 'My Profile'
     };
     return titles[currentPage] || 'Dashboard';

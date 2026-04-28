@@ -7,6 +7,8 @@ const AppContext = createContext(null);
 const AUTH_STORAGE_KEY = 'smartcare.auth';
 
 const roleLandingPage = {
+  admin: 'admin-dashboard',
+  system_admin: 'admin-dashboard',
   patient: 'patient-dashboard',
   doctor: 'doctor-dashboard',
   pharmacist: 'pharmacist-dashboard',
@@ -59,10 +61,10 @@ export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(storedSession?.user || null);
   const [token, setToken] = useState(storedSession?.token || null);
   const [socket, setSocket] = useState(null);
-  
+
   const routerNavigate = useNavigate();
   const location = useLocation();
-  
+
   const currentPage = location.pathname === '/' ? 'home' : location.pathname.substring(1);
 
   useEffect(() => {
@@ -70,13 +72,13 @@ export const AppProvider = ({ children }) => {
 
     if (user && token) {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user, token }));
-      
+
       const socketUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
       newSocket = io(socketUrl);
-      
+
       newSocket.on('connect', () => {
-        newSocket.emit('join-room', user.role); 
-        newSocket.emit('join-room', user.id); 
+        newSocket.emit('join-room', user.role);
+        newSocket.emit('join-room', user.id);
       });
 
       newSocket.on('notification', (data) => {

@@ -7,6 +7,8 @@ const SELF_PROFILE_FIELD_ALLOWLIST = {
   [ROLES.DOCTOR]: ["fullName", "email", "password", "phone", "bio", "specialization", "consultationFee", "avatar", "coverImage"],
   [ROLES.PHARMACIST]: ["fullName", "email", "password", "phone", "avatar", "coverImage"],
   [ROLES.STUDENT]: ["fullName", "email", "password", "phone", "studentId", "department", "level", "bio", "avatar", "coverImage"],
+  [ROLES.ADMIN]: ["fullName", "email", "password", "phone", "avatar", "coverImage"],
+  [ROLES.SYSTEM_ADMIN]: ["fullName", "email", "password", "phone", "avatar", "coverImage"],
   [ROLES.NURSE]: ["fullName", "password"],
   [ROLES.STAFF]: ["fullName", "password"]
 };
@@ -167,6 +169,7 @@ export const updateUserByAdmin = async (id, payload) => {
   if (payload.email !== undefined) user.email = payload.email;
   if (payload.role !== undefined) user.role = payload.role;
   if (payload.password !== undefined) user.password = payload.password;
+  if (payload.isActive !== undefined) user.isActive = payload.isActive;
 
   await user.save();
   return User.findById(user._id).select("-password");

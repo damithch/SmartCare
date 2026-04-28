@@ -80,6 +80,29 @@ export const fetchMyProfile = (token) => cachedAuthenticatedGet("/users/me", tok
 export const fetchUserById = (token, id) => cachedAuthenticatedGet(`/users/${encodeURIComponent(id)}`, token, 60 * 1000);
 export const updateMyProfile = (token, body) => authenticatedRequest("/users/me", token, { method: "PATCH", body: JSON.stringify(body) });
 
+export const fetchUsers = (token, { search = "", role = "", isActive = "", limit = 100 } = {}) => {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    sortBy: "createdAt",
+    sortOrder: "desc"
+  });
+
+  if (search) params.set("search", search);
+  if (role) params.set("role", role);
+  if (isActive) params.set("isActive", isActive);
+
+  return cachedAuthenticatedGet(`/users?${params.toString()}`, token, 10 * 1000);
+};
+
+export const createManagedUser = (token, body) =>
+  authenticatedRequest("/users", token, { method: "POST", body: JSON.stringify(body) });
+
+export const updateManagedUser = (token, id, body) =>
+  authenticatedRequest(`/users/${encodeURIComponent(id)}`, token, { method: "PATCH", body: JSON.stringify(body) });
+
+export const deactivateManagedUser = (token, id) =>
+  authenticatedRequest(`/users/${encodeURIComponent(id)}`, token, { method: "DELETE" });
+
 export const fetchMyAvailability = (token, date) =>
   cachedAuthenticatedGet(`/doctor-availability/me${date ? `?date=${date}` : ""}`, token, 15 * 1000);
 export const createMyAvailability = (token, body) =>

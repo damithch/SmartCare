@@ -99,6 +99,8 @@ export const validateAdminUpdateUser = Joi.object({
     .messages({
       "any.only": `Role must be one of: ${Object.values(ROLES).join(", ")}`
     }),
+  isActive: Joi.boolean()
+    .optional(),
   ...optionalProfileFields
 }).min(1);
 

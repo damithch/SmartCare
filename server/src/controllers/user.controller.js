@@ -91,9 +91,9 @@ export const getUserAdminById = asyncHandler(async (req, res) => {
 
 export const updateUserAdmin = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { fullName, email, password, role } = req.body;
+  const { fullName, email, password, role, isActive } = req.body;
 
-  const user = await userService.updateUserByAdmin(id, { fullName, email, password, role });
+  const user = await userService.updateUserByAdmin(id, { fullName, email, password, role, isActive });
 
   res.status(200).json({
     success: true,
