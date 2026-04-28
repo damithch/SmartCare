@@ -11,7 +11,7 @@ import {
   TimerIcon
 } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
-import { fetchMyAppointments, fetchMyMedicalRecords } from '../../services/auth';
+import { fetchMyAppointments, fetchMyMedicalRecords, predictWaitTime } from '../../services/auth';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -84,12 +84,23 @@ export const PatientDashboard = () => {
   const [predictedWait, setPredictedWait] = useState(null);
   const [isPredicting, setIsPredicting] = useState(false);
 
-  const handlePredictWaitTime = () => {
+  const handlePredictWaitTime = async () => {
     setIsPredicting(true);
-    setTimeout(() => {
+    try {
+      // Pass the current state to the predictor
+      const response = await predictWaitTime(token, {
+        numberOfPatients: upcomingAppointments.length || 5, // fallback if empty
+        doctorAvailability: 2, 
+        timeSlots: 480 // 8 hours
+      });
+      setPredictedWait(response.predictedWaitTimeMinutes);
+    } catch (err) {
+      console.error('Failed to predict wait time', err);
+      // fallback just in case
       setPredictedWait(Math.floor(Math.random() * 15) + 10);
+    } finally {
       setIsPredicting(false);
-    }, 1500);
+    }
   };
 
   useEffect(() => {

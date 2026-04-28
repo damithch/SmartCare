@@ -1,8 +1,8 @@
 import { GoogleGenAI } from '@google/genai';
+import Appointment from '../models/appointment.model.js';
 
 const apiKey = process.env.GEMINI_API_KEY || "AIzaSyCBBxP_eRX46oXVFNyWPGah83Nrm5EX-gE";
 const ai = new GoogleGenAI({ apiKey: apiKey });
-
 
 export const predictWaitTime = async (req, res) => {
   try {
@@ -15,16 +15,27 @@ export const predictWaitTime = async (req, res) => {
       });
     }
 
+    // Fetch historical appointment data
+    const totalAppointments = await Appointment.countDocuments();
+    const completedAppointments = await Appointment.countDocuments({ status: 'completed' });
+    const pendingAppointments = await Appointment.countDocuments({ status: 'pending' });
+
     const prompt = `
       You are an AI assistant in a healthcare system responsible for predicting patient waiting times.
-      Based on the following parameters, predict the average patient waiting time in minutes.
+      Based on the following parameters and historical data, predict the average patient waiting time in minutes.
       
-      Parameters:
+      Current Parameters:
       - Number of patients currently waiting: ${numberOfPatients}
       - Number of doctors available: ${doctorAvailability}
       - Total time slots available (in minutes): ${timeSlots}
 
-      Please analyze these factors and output ONLY the predicted waiting time as a single number (in minutes). Do not provide any additional explanation.
+      Historical Data Context:
+      - Total past appointments recorded: ${totalAppointments}
+      - Historically completed appointments: ${completedAppointments}
+      - Historically pending/delayed appointments: ${pendingAppointments}
+
+      Analyze both the current load and historical patterns. For example, if there are many historical pending appointments, it might indicate a slower processing rate, thus higher waiting time. 
+      Please output ONLY the predicted waiting time as a single number (in minutes). Do not provide any additional explanation.
     `;
 
     const response = await ai.models.generateContent({
@@ -37,7 +48,12 @@ export const predictWaitTime = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
-        predictedWaitTimeMinutes: isNaN(predictedTime) ? 30 : predictedTime
+        predictedWaitTimeMinutes: isNaN(predictedTime) ? 30 : predictedTime,
+        historicalStats: {
+          total: totalAppointments,
+          completed: completedAppointments,
+          pending: pendingAppointments
+        }
       }
     });
   } catch (error) {

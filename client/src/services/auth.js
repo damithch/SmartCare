@@ -161,3 +161,6 @@ export const fetchAppointmentMedicalRecord = async (token, appointmentId) => {
 };
 export const saveConsultation = (token, body) =>
   authenticatedRequest("/medical-records/consultation", token, { method: "POST", body: JSON.stringify(body) });
+
+export const predictWaitTime = (token, body) =>
+  authenticatedRequest("/ai/predict-wait-time", token, { method: "POST", body: JSON.stringify(body) });
