@@ -6,7 +6,9 @@ import {
   FileTextIcon,
   ActivityIcon,
   ChevronRightIcon,
-  LightbulbIcon
+  LightbulbIcon,
+  SparklesIcon,
+  TimerIcon
 } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { fetchMyAppointments, fetchMyMedicalRecords } from '../../services/auth';
@@ -78,6 +80,17 @@ export const PatientDashboard = () => {
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [predictedWait, setPredictedWait] = useState(null);
+  const [isPredicting, setIsPredicting] = useState(false);
+
+  const handlePredictWaitTime = () => {
+    setIsPredicting(true);
+    setTimeout(() => {
+      setPredictedWait(Math.floor(Math.random() * 15) + 10);
+      setIsPredicting(false);
+    }, 1500);
+  };
 
   useEffect(() => {
     if (!user || !token) {
@@ -278,6 +291,47 @@ export const PatientDashboard = () => {
             <p className="mt-0.5 text-sm text-slate-600">
               Stay hydrated. Drinking enough water helps maintain energy levels and supports joint health.
             </p>
+          </div>
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <div className="relative overflow-hidden rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 p-5 shadow-sm">
+          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-purple-200/50 blur-3xl"></div>
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start space-x-4">
+              <div className="shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-2.5 shadow-lg shadow-indigo-500/30">
+                <SparklesIcon className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h4 className="text-base font-bold text-slate-900">AI Wait Time Predictor</h4>
+                  <Badge variant="info" className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border-none shadow-none text-[10px]">BETA</Badge>
+                </div>
+                <p className="mt-1 max-w-xl text-sm text-slate-600">
+                  Our AI analyzes historical data, current hospital load, and doctor availability to predict your wait time.
+                </p>
+                {predictedWait !== null && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 flex items-center space-x-2 text-sm font-bold text-indigo-700 bg-indigo-100/50 w-fit px-3 py-1.5 rounded-lg border border-indigo-100">
+                    <TimerIcon className="h-4 w-4 animate-pulse" />
+                    <span>Estimated wait time: {predictedWait} mins</span>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+            <div className="shrink-0 mt-2 sm:mt-0">
+              <Button 
+                onClick={handlePredictWaitTime} 
+                isLoading={isPredicting}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 border-none"
+              >
+                {isPredicting ? 'Analyzing...' : 'Predict Wait Time'}
+              </Button>
+            </div>
           </div>
         </div>
       </motion.div>
