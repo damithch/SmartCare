@@ -103,6 +103,30 @@ export const updateManagedUser = (token, id, body) =>
 export const deactivateManagedUser = (token, id) =>
   authenticatedRequest(`/users/${encodeURIComponent(id)}`, token, { method: "DELETE" });
 
+export const fetchAdminPayments = (token, { search = "", status = "", paymentMethod = "", reconciled = "", limit = 100 } = {}) => {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    sortBy: "createdAt",
+    sortOrder: "desc"
+  });
+
+  if (search) params.set("search", search);
+  if (status) params.set("status", status);
+  if (paymentMethod) params.set("paymentMethod", paymentMethod);
+  if (reconciled) params.set("reconciled", reconciled);
+
+  return cachedAuthenticatedGet(`/payments?${params.toString()}`, token, 10 * 1000);
+};
+
+export const fetchPaymentReport = (token) =>
+  cachedAuthenticatedGet("/payments/report/generate", token, 10 * 1000);
+
+export const reconcilePayments = (token, paymentIds, reconciliationNotes = "") =>
+  authenticatedRequest("/payments/reconcile/batch", token, {
+    method: "PATCH",
+    body: JSON.stringify({ paymentIds, reconciliationNotes })
+  });
+
 export const fetchMyAvailability = (token, date) =>
   cachedAuthenticatedGet(`/doctor-availability/me${date ? `?date=${date}` : ""}`, token, 15 * 1000);
 export const createMyAvailability = (token, body) =>

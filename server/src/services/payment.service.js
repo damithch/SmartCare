@@ -53,6 +53,7 @@ export const processPayment = async (paymentData, processedBy, processedByRole) 
 
   // Update bill status
   const remainingBalance = Math.max(0, originalAmountDue - amount);
+  bill.amountPaid = Number(bill.amountPaid || 0) + amount;
   bill.amountDue = remainingBalance;
   if (remainingBalance === 0) {
     bill.status = "paid";
@@ -320,6 +321,7 @@ export const processRefund = async (refundId, processedBy) => {
   // Update bill status
   const bill = await Bill.findById(refund.bill);
   if (bill) {
+    bill.amountPaid = Math.max(0, Number(bill.amountPaid || 0) - Number(refund.refundAmount || 0));
     bill.amountDue += refund.refundAmount;
     if (bill.status === "paid" && bill.amountDue > 0) {
       bill.status = "partial";

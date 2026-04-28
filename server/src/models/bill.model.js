@@ -14,6 +14,7 @@ const Bill = createJsonModel("Bill", {
     taxAmount: 0,
     taxPercentage: 0,
     insuranceCoverage: 0,
+    amountPaid: 0,
     status: "pending",
     isActive: true
   },
@@ -27,7 +28,26 @@ const Bill = createJsonModel("Bill", {
     if (!doc.billNumber) {
       doc.billNumber = buildNumber("BILL", await Model.countDocuments());
     }
-    doc.amountDue = Number(doc.subtotal || 0) - Number(doc.discount || 0) + Number(doc.taxAmount || 0) - Number(doc.insuranceCoverage || 0);
+    const totalPayable = Math.max(
+      0,
+      Number(doc.subtotal || 0) -
+        Number(doc.discount || 0) +
+        Number(doc.taxAmount || 0) -
+        Number(doc.insuranceCoverage || 0)
+    );
+
+    if (doc.amountPaid === undefined || doc.amountPaid === null) {
+      if (doc.status === "paid") {
+        doc.amountPaid = totalPayable;
+      } else if (doc.amountDue !== undefined && doc.amountDue !== null) {
+        doc.amountPaid = Math.max(0, totalPayable - Number(doc.amountDue || 0));
+      } else {
+        doc.amountPaid = 0;
+      }
+    }
+
+    doc.amountPaid = Math.min(totalPayable, Math.max(0, Number(doc.amountPaid || 0)));
+    doc.amountDue = Math.max(0, totalPayable - doc.amountPaid);
   }
 });
 

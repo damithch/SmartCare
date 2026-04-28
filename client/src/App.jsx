@@ -30,6 +30,7 @@ import { PharmacistDashboard } from './pages/pharmacist/PharmacistDashboard';
 import { PrescriptionQueue } from './pages/pharmacist/PrescriptionQueue';
 import { InventoryPage } from './pages/pharmacist/InventoryPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { PaymentManagement } from './pages/admin/PaymentManagement';
 import { ProfilePage } from './pages/profile/ProfilePage';
 
 const HomePage = () => (
@@ -66,6 +67,7 @@ const pageComponents = {
   inventory: InventoryPage,
   'admin-dashboard': AdminDashboard,
   'user-management': AdminDashboard,
+  'payment-management': PaymentManagement,
   profile: ProfilePage
 };
 

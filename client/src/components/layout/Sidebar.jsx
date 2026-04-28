@@ -8,6 +8,7 @@ import {
   FileTextIcon,
   UserIcon,
   LogOutIcon,
+  CreditCardIcon,
   PillIcon,
   PackageIcon,
   ActivityIcon,
@@ -133,6 +134,12 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
       icon: UserCogIcon,
       page: 'user-management',
       section: 'MANAGEMENT'
+    },
+    {
+      name: 'Payment Management',
+      icon: CreditCardIcon,
+      page: 'payment-management',
+      section: 'FINANCE'
     }];
 
   const studentLinks = [

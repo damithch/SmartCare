@@ -38,6 +38,7 @@ export const TopBar = ({ toggleSidebar }) => {
       inventory: 'Inventory Management',
       'admin-dashboard': 'Admin Dashboard',
       'user-management': 'User Management',
+      'payment-management': 'Payment Management',
       profile: 'My Profile'
     };
     return titles[currentPage] || 'Dashboard';
