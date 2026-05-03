@@ -44,10 +44,6 @@ export const saveConsultation = asyncHandler(async (req, res) => {
 export const getAppointmentMedicalRecord = asyncHandler(async (req, res) => {
   const record = await medicalRecordService.getMedicalRecordByAppointment(req.params.appointmentId, req.user._id);
 
-  if (!record) {
-    throw new AppError("Medical record not found for this appointment", 404, "RECORD_NOT_FOUND");
-  }
-
   res.status(200).json({
     success: true,
     data: record

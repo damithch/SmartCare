@@ -223,9 +223,7 @@ export const createAppointmentCheckout = async (payload, userId, userRole) => {
   const paymentIntent = await stripeClient.paymentIntents.create({
     amount: Math.round(context.amount * 100),
     currency: "usd",
-    automatic_payment_methods: {
-      enabled: true
-    },
+    payment_method_types: ["card"],
     receipt_email: context.patient.email,
     metadata: {
       patientId: String(context.patient._id),
@@ -285,6 +283,21 @@ export const confirmAppointmentPayment = async ({ paymentIntentId, ...payload },
     paymentIntent.metadata.availabilityId !== String(payload.availabilityId)
   ) {
     throw new AppError("Payment does not match the selected appointment", 400, "PAYMENT_MISMATCH");
+  }
+
+  const duplicateAppointment = await Appointment.findOne({
+    patient: payload.patientId,
+    availabilitySlot: payload.availabilityId,
+    status: { $nin: [APPOINTMENT_STATUS.CANCELLED, APPOINTMENT_STATUS.REJECTED] }
+  });
+
+  if (duplicateAppointment) {
+    duplicateAppointment.paymentIntentId = paymentIntentId;
+    duplicateAppointment.paymentStatus = "paid";
+    duplicateAppointment.amountPaid = Number(((paymentIntent.amount_received || paymentIntent.amount) / 100).toFixed(2));
+    duplicateAppointment.paymentCurrency = paymentIntent.currency;
+    await duplicateAppointment.save();
+    return populateAppointmentById(duplicateAppointment._id);
   }
 
   return createAppointment(

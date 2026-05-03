@@ -19,6 +19,34 @@ export const processPayment = asyncHandler(async (req, res) => {
   });
 });
 
+export const createBillCheckout = asyncHandler(async (req, res) => {
+  if (![ROLES.BILLING_STAFF, ROLES.RECEPTIONIST, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.PATIENT].includes(req.user.role)) {
+    throw new AppError("Only authorized users can initialize payments", 403, "FORBIDDEN");
+  }
+
+  const checkout = await paymentService.createBillCheckout(req.body, req.user._id, req.user.role);
+
+  return res.status(201).json({
+    success: true,
+    message: "Payment intent created successfully",
+    data: checkout,
+  });
+});
+
+export const confirmBillPayment = asyncHandler(async (req, res) => {
+  if (![ROLES.BILLING_STAFF, ROLES.RECEPTIONIST, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.PATIENT].includes(req.user.role)) {
+    throw new AppError("Only authorized users can confirm payments", 403, "FORBIDDEN");
+  }
+
+  const payment = await paymentService.confirmBillPayment(req.body, req.user._id, req.user.role);
+
+  return res.status(201).json({
+    success: true,
+    message: "Payment processed successfully",
+    data: payment,
+  });
+});
+
 // Get all payments
 export const getAllPayments = asyncHandler(async (req, res) => {
   // Authorization: billing staff, admin, patients see own

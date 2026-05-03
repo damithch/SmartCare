@@ -119,8 +119,8 @@ export const validateUpdateStock = Joi.object({
 export const validateMedicineQuery = Joi.object({
   page: Joi.number().min(1).optional(),
   limit: Joi.number().min(1).max(100).optional(),
-  category: Joi.string().optional(),
-  search: Joi.string().max(200).optional(),
+  category: Joi.string().allow("").optional(),
+  search: Joi.string().max(200).allow("").optional(),
   expiringWithin: Joi.number()
     .min(1)
     .optional()

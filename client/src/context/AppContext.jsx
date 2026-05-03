@@ -73,8 +73,12 @@ export const AppProvider = ({ children }) => {
     if (user && token) {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user, token }));
 
-      const socketUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
-      newSocket = io(socketUrl);
+      const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+      const socketUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
+      newSocket = io(socketUrl, {
+        reconnectionAttempts: 3,
+        timeout: 5000
+      });
 
       newSocket.on('connect', () => {
         newSocket.emit('join-room', user.role);

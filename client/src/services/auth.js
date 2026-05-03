@@ -169,10 +169,10 @@ export const fetchLowStockMedicines = (token) =>
 export const addMedicine = (token, body) =>
   authenticatedRequest("/medicines", token, { method: "POST", body: JSON.stringify(body) });
 export const fetchPrescriptionQueue = (token, status = "", search = "") =>
-  cachedAuthenticatedGet(
+  authenticatedRequest(
     `/medical-records/prescriptions/queue?limit=50${status ? `&status=${encodeURIComponent(status)}` : ""}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
     token,
-    15 * 1000
+    { method: "GET" }
   );
 export const updatePrescriptionQueueStatus = (token, recordId, prescriptionId, status) =>
   authenticatedRequest(
@@ -184,6 +184,10 @@ export const fetchMyBills = (token, status = "") =>
   cachedAuthenticatedGet(`/bills?limit=30&sortBy=createdAt&sortOrder=desc${status ? `&status=${encodeURIComponent(status)}` : ""}`, token, 20 * 1000);
 export const payBill = (token, body) =>
   authenticatedRequest("/payments", token, { method: "POST", body: JSON.stringify(body) });
+export const createBillCheckout = (token, body) =>
+  authenticatedRequest("/payments/bill-checkout-intent", token, { method: "POST", body: JSON.stringify(body) });
+export const confirmBillPayment = (token, body) =>
+  authenticatedRequest("/payments/confirm-bill-payment", token, { method: "POST", body: JSON.stringify(body) });
 
 export const fetchMyMedicalRecords = (token) =>
   cachedAuthenticatedGet("/medical-records/my?limit=15&sortBy=createdAt&sortOrder=desc", token, 20 * 1000);

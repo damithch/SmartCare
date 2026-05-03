@@ -55,9 +55,10 @@ const decorateSlot = (slot) => {
 
 export const listDoctorAvailability = async (doctorId, date) => {
   const query = { doctor: doctorId };
+  const normalizedDate = String(date || "").trim();
 
-  if (date) {
-    query.date = date;
+  if (normalizedDate) {
+    query.date = normalizedDate;
   }
 
   const slots = await DoctorAvailability.find(query).sort({ date: 1, startTime: 1 });

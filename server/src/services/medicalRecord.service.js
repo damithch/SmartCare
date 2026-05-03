@@ -18,6 +18,8 @@ const populateRecordById = (recordId) =>
       ]
     });
 
+const getRefId = (value) => value?._id || value;
+
 const getValidatedAppointment = async (appointmentId, patientId, doctorId) => {
   if (!appointmentId) {
     return null;
@@ -44,11 +46,13 @@ const getValidatedAppointment = async (appointmentId, patientId, doctorId) => {
 
 const syncMedicineBillForRecord = async (record, doctorId) => {
   const prescriptions = record.prescriptions || [];
-  const billTag = `AUTO_MEDICINE_BILL:${record.appointment || record._id}`;
+  const patientId = getRefId(record.patient);
+  const appointmentId = getRefId(record.appointment);
+  const billTag = `AUTO_MEDICINE_BILL:${appointmentId || record._id}`;
 
   if (!prescriptions.length) {
     await Bill.updateMany(
-      { patient: record.patient, notes: billTag, status: { $in: ["draft", "pending", "partial", "overdue"] } },
+      { patient: patientId, notes: billTag, status: { $in: ["draft", "pending", "partial", "overdue"] } },
       { isActive: false, status: "cancelled" }
     );
     return null;
@@ -75,17 +79,34 @@ const syncMedicineBillForRecord = async (record, doctorId) => {
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 7);
 
-  let bill = await Bill.findOne({
-    patient: record.patient,
+  const activeBills = await Bill.find({
+    patient: patientId,
     notes: billTag,
-    isActive: true,
-    status: { $in: ["draft", "pending", "partial", "overdue"] }
-  });
+    isActive: true
+  }).sort({ createdAt: -1 });
+
+  const paidBill = activeBills.find((item) => item.status === "paid" || Number(item.amountDue || 0) <= 0);
+
+  if (paidBill) {
+    const unpaidDuplicates = activeBills.filter(
+      (item) => String(item._id) !== String(paidBill._id) && ["draft", "pending", "partial", "overdue"].includes(item.status)
+    );
+
+    await Promise.all(unpaidDuplicates.map(async (item) => {
+      item.isActive = false;
+      item.status = "cancelled";
+      await item.save();
+    }));
+
+    return paidBill;
+  }
+
+  let bill = activeBills.find((item) => ["draft", "pending", "partial", "overdue"].includes(item.status));
 
   if (!bill) {
     bill = new Bill({
-      patient: record.patient,
-      appointment: record.appointment,
+      patient: patientId,
+      appointment: appointmentId,
       generatedBy: doctorId,
       notes: billTag
     });
@@ -98,7 +119,7 @@ const syncMedicineBillForRecord = async (record, doctorId) => {
   bill.taxAmount = 0;
   bill.insuranceCoverage = 0;
   bill.amountDue = subtotal;
-  bill.status = "pending";
+  bill.status = subtotal <= 0 ? "paid" : "pending";
   bill.dueDate = dueDate;
   bill.generatedBy = doctorId;
   bill.isActive = true;
@@ -107,14 +128,33 @@ const syncMedicineBillForRecord = async (record, doctorId) => {
   return bill;
 };
 
-const getMedicineBillTag = (record) => `AUTO_MEDICINE_BILL:${record.appointment || record._id}`;
+const getMedicineBillTag = (record) => `AUTO_MEDICINE_BILL:${getRefId(record.appointment) || record._id}`;
 
-const getMedicineBillForRecord = async (record) =>
-  Bill.findOne({
-    patient: record.patient,
+const getMedicineBillForRecord = async (record) => {
+  const bills = await Bill.find({
+    patient: getRefId(record.patient),
     notes: getMedicineBillTag(record),
     isActive: true
   }).sort({ createdAt: -1 });
+
+  const paidBill = bills.find((bill) => bill.status === "paid" || Number(bill.amountDue || 0) <= 0);
+
+  if (paidBill) {
+    const unpaidDuplicates = bills.filter(
+      (bill) => String(bill._id) !== String(paidBill._id) && ["draft", "pending", "partial", "overdue"].includes(bill.status)
+    );
+
+    await Promise.all(unpaidDuplicates.map(async (bill) => {
+      bill.isActive = false;
+      bill.status = "cancelled";
+      await bill.save();
+    }));
+
+    return paidBill;
+  }
+
+  return bills[0] || null;
+};
 
 const buildPrescriptionQueueItem = (record, prescription, bill) => ({
   id: `${record._id}:${prescription._id}`,
@@ -410,6 +450,7 @@ export const addPrescription = async (recordId, prescriptionData, doctorId) => {
 
   record.prescriptions.push(prescription);
   await record.save();
+  await syncMedicineBillForRecord(record, doctorId);
 
   return populateRecordById(recordId);
 };
@@ -467,7 +508,15 @@ export const getPrescriptionQueue = async ({ status, search, limit = 100 } = {})
     .limit(safeLimit);
 
   const billEntries = await Promise.all(
-    records.map(async (record) => [String(record._id), await getMedicineBillForRecord(record)])
+    records.map(async (record) => {
+      const bill = await getMedicineBillForRecord(record);
+      if (bill) {
+        return [String(record._id), bill];
+      }
+
+      const doctorId = record.doctor?._id || record.doctor;
+      return [String(record._id), await syncMedicineBillForRecord(record, doctorId)];
+    })
   );
   const billMap = new Map(billEntries);
 

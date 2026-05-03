@@ -18,6 +18,20 @@ router.post(
   paymentController.processPayment
 );
 
+router.post(
+  "/bill-checkout-intent",
+  authorize(ROLES.BILLING_STAFF, ROLES.RECEPTIONIST, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.PATIENT),
+  validate(paymentValidation.billCheckoutSchema, "body"),
+  paymentController.createBillCheckout
+);
+
+router.post(
+  "/confirm-bill-payment",
+  authorize(ROLES.BILLING_STAFF, ROLES.RECEPTIONIST, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.PATIENT),
+  validate(paymentValidation.confirmBillPaymentSchema, "body"),
+  paymentController.confirmBillPayment
+);
+
 // GET /payments - List payments (billing staff, admin, patients see own)
 router.get(
   "/",

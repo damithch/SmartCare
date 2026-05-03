@@ -1,9 +1,97 @@
+import Stripe from "stripe";
 import Payment from "../models/payment.model.js";
 import Refund from "../models/refund.model.js";
 import Bill from "../models/bill.model.js";
 import User from "../models/user.model.js";
 import AppError from "../utils/appError.js";
 import { ROLES } from "../constants/roles.js";
+
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-02-24.acacia" })
+  : null;
+
+const ensureStripe = () => {
+  if (!stripe) {
+    throw new AppError("Stripe is not configured on the server", 500, "STRIPE_NOT_CONFIGURED");
+  }
+
+  if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+    throw new AppError("Stripe publishable key is missing", 500, "STRIPE_NOT_CONFIGURED");
+  }
+
+  return stripe;
+};
+
+const applyBillPayment = async ({
+  bill,
+  amount,
+  paymentMethod,
+  transactionReference,
+  description,
+  processedBy,
+  cardDetails,
+  checkDetails,
+  insuranceDetails,
+  bankTransferDetails
+}) => {
+  const originalAmountDue = Number(bill.amountDue || 0);
+  const existingPayment = transactionReference
+    ? await Payment.findOne({ transactionReference, status: "completed" })
+    : null;
+
+  if (existingPayment) {
+    return existingPayment.populate([
+      { path: "bill" },
+      { path: "patient", select: "fullName email phone" },
+      { path: "processedBy", select: "fullName email" }
+    ]);
+  }
+
+  if (bill.status === "cancelled") {
+    throw new AppError("Cancelled bills cannot be paid", 400, "BILL_PAYMENT_NOT_ALLOWED");
+  }
+
+  if (bill.status === "paid" || originalAmountDue <= 0) {
+    throw new AppError("This bill has already been paid", 409, "BILL_ALREADY_PAID");
+  }
+
+  if (amount > originalAmountDue) {
+    throw new AppError(`Payment amount cannot exceed due amount of ${originalAmountDue}`, 400, "INVALID_PAYMENT_AMOUNT");
+  }
+
+  const payment = new Payment({
+    bill: bill._id,
+    patient: bill.patient,
+    amount,
+    paymentMethod,
+    cardDetails,
+    checkDetails,
+    insuranceDetails,
+    bankTransferDetails,
+    transactionReference,
+    description,
+    processedBy,
+    status: "completed"
+  });
+
+  await payment.save();
+
+  const remainingBalance = Math.max(0, originalAmountDue - amount);
+  bill.amountPaid = Number(bill.amountPaid || 0) + amount;
+  bill.amountDue = remainingBalance;
+  if (remainingBalance === 0) {
+    bill.status = "paid";
+  } else if (remainingBalance < originalAmountDue) {
+    bill.status = "partial";
+  }
+  await bill.save();
+
+  return payment.populate([
+    { path: "bill" },
+    { path: "patient", select: "fullName email phone" },
+    { path: "processedBy", select: "fullName email" }
+  ]);
+};
 
 // 1. Process payment
 export const processPayment = async (paymentData, processedBy, processedByRole) => {
@@ -19,24 +107,8 @@ export const processPayment = async (paymentData, processedBy, processedByRole) 
     throw new AppError("Patients can only pay their own bills", 403, "FORBIDDEN");
   }
 
-  if (bill.status === "cancelled") {
-    throw new AppError("Cancelled bills cannot be paid", 400, "BILL_PAYMENT_NOT_ALLOWED");
-  }
-
-  if (bill.status === "paid" || bill.amountDue <= 0) {
-    throw new AppError("This bill has already been paid", 409, "BILL_ALREADY_PAID");
-  }
-
-  const originalAmountDue = bill.amountDue;
-
-  // Validate amount doesn't exceed bill amount
-  if (amount > originalAmountDue) {
-    throw new AppError(`Payment amount cannot exceed due amount of ${originalAmountDue}`, 400, "INVALID_PAYMENT_AMOUNT");
-  }
-
-  const payment = new Payment({
-    bill: billId,
-    patient: bill.patient,
+  return applyBillPayment({
+    bill,
     amount,
     paymentMethod,
     cardDetails,
@@ -45,28 +117,98 @@ export const processPayment = async (paymentData, processedBy, processedByRole) 
     bankTransferDetails,
     transactionReference,
     description,
-    processedBy,
-    status: "completed",
+    processedBy
+  });
+};
+
+export const createBillCheckout = async ({ bill: billId }, processedBy, processedByRole) => {
+  const stripeClient = ensureStripe();
+  const bill = await Bill.findById(billId).populate("patient", "fullName email phone");
+
+  if (!bill) {
+    throw new AppError("Bill not found", 404, "BILL_NOT_FOUND");
+  }
+
+  const patientId = bill.patient?._id || bill.patient;
+  if (processedByRole === ROLES.PATIENT && patientId.toString() !== processedBy.toString()) {
+    throw new AppError("Patients can only pay their own bills", 403, "FORBIDDEN");
+  }
+
+  if (bill.status === "cancelled") {
+    throw new AppError("Cancelled bills cannot be paid", 400, "BILL_PAYMENT_NOT_ALLOWED");
+  }
+
+  const amountDue = Number(bill.amountDue || 0);
+  if (bill.status === "paid" || amountDue <= 0) {
+    throw new AppError("This bill has already been paid", 409, "BILL_ALREADY_PAID");
+  }
+
+  const paymentIntent = await stripeClient.paymentIntents.create({
+    amount: Math.round(amountDue * 100),
+    currency: process.env.STRIPE_CURRENCY || "usd",
+    payment_method_types: ["card"],
+    receipt_email: bill.patient?.email,
+    metadata: {
+      billId: String(bill._id),
+      patientId: String(patientId),
+      billNumber: bill.billNumber || ""
+    },
+    description: `SmartCare medicine bill ${bill.billNumber || bill._id}`
   });
 
-  await payment.save();
+  return {
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id,
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    amount: amountDue,
+    currency: paymentIntent.currency,
+    billId: String(bill._id),
+    billNumber: bill.billNumber
+  };
+};
 
-  // Update bill status
-  const remainingBalance = Math.max(0, originalAmountDue - amount);
-  bill.amountPaid = Number(bill.amountPaid || 0) + amount;
-  bill.amountDue = remainingBalance;
-  if (remainingBalance === 0) {
-    bill.status = "paid";
-  } else if (remainingBalance < originalAmountDue) {
-    bill.status = "partial";
+export const confirmBillPayment = async ({ bill: billId, paymentIntentId }, processedBy, processedByRole) => {
+  const stripeClient = ensureStripe();
+  const bill = await Bill.findById(billId);
+
+  if (!bill) {
+    throw new AppError("Bill not found", 404, "BILL_NOT_FOUND");
   }
-  await bill.save();
 
-  return payment.populate([
-    { path: "bill" },
-    { path: "patient", select: "fullName email phone" },
-    { path: "processedBy", select: "fullName email" },
-  ]);
+  if (processedByRole === ROLES.PATIENT && bill.patient.toString() !== processedBy.toString()) {
+    throw new AppError("Patients can only pay their own bills", 403, "FORBIDDEN");
+  }
+
+  const paymentIntent = await stripeClient.paymentIntents.retrieve(paymentIntentId);
+
+  if (!paymentIntent) {
+    throw new AppError("Stripe payment not found", 404, "PAYMENT_NOT_FOUND");
+  }
+
+  if (paymentIntent.status !== "succeeded") {
+    throw new AppError("Payment has not been completed", 400, "PAYMENT_NOT_COMPLETED");
+  }
+
+  if (
+    paymentIntent.metadata.billId !== String(bill._id) ||
+    paymentIntent.metadata.patientId !== String(bill.patient)
+  ) {
+    throw new AppError("Payment does not match this bill", 400, "PAYMENT_MISMATCH");
+  }
+
+  const amountPaid = Number(((paymentIntent.amount_received || paymentIntent.amount) / 100).toFixed(2));
+
+  return applyBillPayment({
+    bill,
+    amount: Math.min(amountPaid, Number(bill.amountDue || 0)),
+    paymentMethod: "card",
+    transactionReference: paymentIntent.id,
+    description: `Stripe payment for ${bill.billNumber || bill._id}`,
+    processedBy,
+    cardDetails: {
+      brand: paymentIntent.payment_method_types?.[0] || "card"
+    }
+  });
 };
 
 // 2. Get payment by ID

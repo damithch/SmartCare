@@ -38,6 +38,21 @@ export const processPaymentSchema = Joi.object().keys({
   description: Joi.string().allow(""),
 });
 
+export const billCheckoutSchema = Joi.object().keys({
+  bill: Joi.string().required().messages({
+    "any.required": "Bill ID is required",
+  }),
+});
+
+export const confirmBillPaymentSchema = Joi.object().keys({
+  bill: Joi.string().required().messages({
+    "any.required": "Bill ID is required",
+  }),
+  paymentIntentId: Joi.string().required().messages({
+    "any.required": "Payment intent ID is required",
+  }),
+});
+
 // Update payment status schema
 export const updatePaymentStatusSchema = Joi.object().keys({
   status: Joi.string()

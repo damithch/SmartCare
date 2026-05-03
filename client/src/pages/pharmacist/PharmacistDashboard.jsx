@@ -9,7 +9,7 @@ import {
   ActivityIcon
 } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
-import { fetchLowStockMedicines, fetchMedicines } from '../../services/auth';
+import { fetchLowStockMedicines, fetchMedicines, fetchPrescriptionQueue } from '../../services/auth';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -58,6 +58,7 @@ export const PharmacistDashboard = () => {
   const { user, token, navigate } = useAppContext();
   const [medicines, setMedicines] = useState([]);
   const [lowStockMedicines, setLowStockMedicines] = useState([]);
+  const [prescriptions, setPrescriptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -72,9 +73,10 @@ export const PharmacistDashboard = () => {
       setError('');
 
       try {
-        const [medicineData, lowStockData] = await Promise.all([
+        const [medicineData, lowStockData, prescriptionData] = await Promise.all([
           fetchMedicines(token),
-          fetchLowStockMedicines(token)
+          fetchLowStockMedicines(token),
+          fetchPrescriptionQueue(token)
         ]);
 
         if (!isMounted) {
@@ -83,6 +85,7 @@ export const PharmacistDashboard = () => {
 
         setMedicines(Array.isArray(medicineData) ? medicineData : []);
         setLowStockMedicines(Array.isArray(lowStockData) ? lowStockData : []);
+        setPrescriptions(Array.isArray(prescriptionData) ? prescriptionData : []);
       } catch (err) {
         if (isMounted) {
           setError(err.message || 'Failed to load pharmacist dashboard');
@@ -106,6 +109,9 @@ export const PharmacistDashboard = () => {
   const totalValue = medicines.reduce((sum, medicine) => sum + Number(medicine.price || 0) * Number(medicine.quantity || 0), 0);
   const expiringSoonCount = medicines.filter((medicine) => getMedicineStatus(medicine) === 'expiring_soon').length;
   const topMedicines = medicines.slice(0, 4);
+  const activePrescriptions = prescriptions.filter((rx) => rx.status !== 'dispensed');
+  const readyToDispense = activePrescriptions.filter((rx) => rx.isPaid);
+  const waitingPayment = activePrescriptions.filter((rx) => !rx.isPaid);
 
   const stats = [
     {
@@ -142,14 +148,14 @@ export const PharmacistDashboard = () => {
       sparklineColor: '#D97706'
     },
     {
-      label: 'Expiring Soon',
-      value: expiringSoonCount,
+      label: 'Ready to Dispense',
+      value: readyToDispense.length,
       icon: ActivityIcon,
       color: 'text-purple-600',
       bg: 'bg-purple-100',
-      trend: `${expiringSoonCount}`,
-      trendUp: expiringSoonCount === 0,
-      sparklineData: [0, Math.max(expiringSoonCount - 1, 0), expiringSoonCount, expiringSoonCount],
+      trend: `${waitingPayment.length} unpaid`,
+      trendUp: readyToDispense.length > 0,
+      sparklineData: [0, Math.max(readyToDispense.length - 1, 0), readyToDispense.length, activePrescriptions.length],
       sparklineColor: '#9333EA'
     }
   ];
@@ -221,9 +227,9 @@ export const PharmacistDashboard = () => {
                       </div>
                       <div>
                         <h3 className="text-base font-bold text-slate-900">{medicine.name}</h3>
-                        <p className="text-sm font-medium text-slate-600">{medicine.category} • {medicine.manufacturer}</p>
+                        <p className="text-sm font-medium text-slate-600">{medicine.category} - {medicine.manufacturer}</p>
                         <div className="mt-2 flex items-center text-xs font-semibold uppercase tracking-wider text-slate-400">
-                          {medicine.strength} • {medicine.quantity} {medicine.unit}
+                          {medicine.strength} - {medicine.quantity} {medicine.unit}
                         </div>
                       </div>
                     </div>
@@ -250,6 +256,44 @@ export const PharmacistDashboard = () => {
         </motion.div>
 
         <div className="space-y-6">
+          <motion.div variants={itemVariants} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold tracking-tight text-slate-900">Ready to Dispense</h2>
+              <button onClick={() => navigate('prescriptions')} className="flex items-center text-sm font-semibold text-blue-600 transition-colors hover:text-blue-700">
+                View Queue <ChevronRightIcon className="ml-1 h-4 w-4" />
+              </button>
+            </div>
+
+            <Card className="overflow-hidden border-slate-200 p-0 shadow-sm">
+              <ul className="divide-y divide-slate-100">
+                {readyToDispense.slice(0, 4).map((rx) => (
+                  <li key={rx.id} className="group p-4 transition-colors hover:bg-slate-50">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="truncate text-sm font-bold text-slate-900 transition-colors group-hover:text-blue-600">{rx.patientName}</p>
+                        <p className="mt-1 text-xs font-medium text-slate-500">{rx.medicines?.[0]?.name || 'Medicine'} - {rx.billNumber || 'Paid bill'}</p>
+                      </div>
+                      <Badge variant="success" className="text-[10px] font-bold">Paid</Badge>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-xs font-medium text-slate-500">Amount due: ${Number(rx.amountDue || 0).toFixed(2)}</span>
+                      <button className="text-xs font-bold text-blue-600 hover:underline" onClick={() => navigate('prescriptions')}>
+                        Dispense
+                      </button>
+                    </div>
+                  </li>
+                ))}
+                {readyToDispense.length === 0 && (
+                  <li className="flex flex-col items-center justify-center p-8 text-center">
+                    <ActivityIcon className="mb-2 h-8 w-8 text-slate-300" />
+                    <p className="text-sm font-medium text-slate-500">No paid prescriptions waiting right now.</p>
+                    {waitingPayment.length > 0 && <p className="mt-1 text-xs text-slate-400">{waitingPayment.length} prescription(s) still waiting for payment.</p>}
+                  </li>
+                )}
+              </ul>
+            </Card>
+          </motion.div>
+
           <motion.div variants={itemVariants} className="space-y-4">
             <h2 className="text-lg font-bold tracking-tight text-slate-900">Inventory Health</h2>
             <Card className="p-5">
